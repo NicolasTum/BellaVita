@@ -437,6 +437,44 @@ class MainWindow(QMainWindow):
                 padding: 18px;
                 line-height: 1.45;
             }
+            QFrame#SidePanel, QFrame#InfoCard {
+                background: #ffffff;
+                border: 1px solid #ded8ce;
+                border-radius: 8px;
+            }
+            QLabel#CardTitle {
+                font-size: 18px;
+                font-weight: 700;
+                color: #252525;
+            }
+            QLabel#SelectedCustomerName {
+                font-size: 22px;
+                font-weight: 700;
+                color: #2f6f73;
+            }
+            QLabel#DetailText {
+                color: #3d3934;
+                line-height: 1.35;
+            }
+            QLabel#Hint {
+                color: #67615a;
+                font-size: 13px;
+            }
+            QLabel#TotalLabel {
+                color: #214f52;
+                font-size: 24px;
+                font-weight: 700;
+            }
+            QScrollArea#PurchaseScroll {
+                border: 0;
+                background: transparent;
+            }
+            QTableWidget {
+                gridline-color: #e5ded5;
+                selection-background-color: #cfe5df;
+                selection-color: #1f3839;
+                alternate-background-color: #fbfaf7;
+            }
             QLabel#Sticker {
                 background: #ffffff;
                 border: 2px dashed #bfb6aa;

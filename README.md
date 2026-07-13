@@ -50,6 +50,7 @@ Implementado en desarrollo:
 - Deteccion de posibles duplicados por telefono, correo o nombre y apellido.
 - Resumen en ficha de stickers actuales, premios disponibles y ultima compra.
 - Registro de compras simples y detalladas.
+- Pantalla de compra en dos columnas: clientes a la izquierda y formulario a la derecha.
 - Calculo automatico de subtotales y total.
 - Asignacion automatica al ciclo de fidelizacion.
 - Carton visual de seis stickers.

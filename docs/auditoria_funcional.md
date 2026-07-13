@@ -58,6 +58,8 @@ Fecha de auditoria: 2026-07-12
 | Panel principal | Registrar compra | `app/ui/main_window.py`, `app/ui/purchase_page.py` | Abrir registro real de compra | Funcional |
 | Registro de compra | Buscar cliente | `app/ui/purchase_page.py` | Filtrar y seleccionar cliente existente | Funcional |
 | Registro de compra | Seleccionar cliente | `app/ui/purchase_page.py` | Mostrar datos, stickers y premios | Funcional |
+| Registro de compra | Nuevo cliente | `app/ui/purchase_page.py`, `app/ui/customer_dialog.py` | Crear cliente desde el panel izquierdo y preseleccionarlo | Funcional |
+| Registro de compra | Refrescar lista | `app/ui/purchase_page.py` | Recargar tabla de clientes sin salir de la pantalla | Funcional |
 | Registro de compra | Modalidad simple | `app/ui/purchase_page.py`, `app/services/purchases.py` | Guardar descripcion e importe total | Funcional |
 | Registro de compra | Modalidad detallada | `app/ui/purchase_page.py`, `app/services/purchases.py` | Agregar lineas, calcular subtotales y total | Funcional |
 | Registro de compra | Guardar compra | `app/ui/purchase_page.py`, `app/services/purchases.py` | Validar, confirmar, persistir y actualizar ciclo | Funcional |
@@ -73,6 +75,7 @@ Fecha de auditoria: 2026-07-12
 - `QDialogButtonBox.accepted.connect(...)` y `rejected.connect(...)` en `app/ui/customer_dialog.py`.
 - `QLineEdit.textChanged.connect(...)` para busqueda en vivo.
 - `QTableWidget.doubleClicked.connect(...)` para abrir ficha.
+- `QSplitter` en `app/ui/purchase_page.py` para la pantalla de compra en dos columnas.
 
 ## Prueba automatica ejecutada
 
@@ -85,7 +88,7 @@ Comando:
 Resultado:
 
 ```text
-20 passed
+21 passed
 ```
 
 Cobertura funcional actual de pruebas:
@@ -105,6 +108,7 @@ Cobertura funcional actual de pruebas:
 - Inicio automatico del ciclo siguiente.
 - Prevencion de doble registro mediante `operation_id`.
 - Persistencia de compras, items, ciclos, premios y auditoria.
+- Layout de compra con dos columnas, boton guardar deshabilitado sin cliente y cambio de modalidad simple/detallada.
 
 ## Prueba manual documentada
 
@@ -130,6 +134,8 @@ Flujo probado:
 10. Se puede seleccionar un cliente activo y registrar compra simple o detallada.
 11. La sexta compra completa el ciclo y genera premio disponible.
 12. `Ciclo actual` muestra seis stickers, total, promedio, faltantes e historial simple.
+13. `Registrar compra` usa dos columnas: clientes a la izquierda y formulario a la derecha.
+14. La columna derecha mantiene el boton guardar accesible mediante scroll en resoluciones bajas.
 
 Flujo manual controlado de Fase 3/4:
 
