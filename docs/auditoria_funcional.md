@@ -69,6 +69,26 @@ Fecha de auditoria: 2026-07-12
 | Carton de fidelizacion | Ver historial de ciclos | `app/ui/loyalty_card_page.py` | Enfocar lista simple de ciclos | Parcial funcional |
 | Carton de fidelizacion | Volver a ficha | `app/ui/loyalty_card_page.py` | Regresar a ficha del cliente | Funcional |
 
+## Estado despues de Fase 5 e historial basico
+
+| Pantalla | Boton o accion | Archivo | Accion esperada | Estado actual |
+|---|---|---|---|---|
+| Panel principal | Premios disponibles | `app/ui/main_window.py`, `app/ui/rewards_page.py` | Abrir listado real de premios | Funcional |
+| Premios disponibles | Buscar | `app/ui/rewards_page.py` | Filtrar por nombre, apellido, telefono o correo | Funcional |
+| Premios disponibles | Filtro de estado | `app/ui/rewards_page.py` | Mostrar todos, disponibles, utilizados, vencidos o anulados | Funcional |
+| Premios disponibles | Ver premio | `app/ui/rewards_page.py`, `app/ui/reward_dialogs.py` | Abrir ficha completa del premio | Funcional |
+| Premios disponibles | Doble clic | `app/ui/rewards_page.py` | Abrir ficha del premio | Funcional |
+| Premios disponibles | Canjear premio | `app/ui/rewards_page.py`, `app/ui/reward_dialogs.py`, `app/services/rewards.py` | Canjear premio disponible con validaciones | Funcional |
+| Ficha de premio | Canjear premio | `app/ui/reward_dialogs.py` | Abrir dialogo de canje si esta disponible | Funcional |
+| Canje de premio | Confirmar canje | `app/services/rewards.py` | Transaccion SQLite, estado utilizado, fecha, prenda, precio, diferencia y auditoria | Funcional |
+| Ficha de cliente | Ver historial | `app/ui/main_window.py`, `app/ui/customer_history_page.py` | Mostrar compras, ciclos y premios en pestañas | Funcional |
+| Historial cliente | Ver compra | `app/ui/customer_history_page.py` | Mostrar detalle de fila seleccionada | Funcional |
+| Historial cliente | Ver ciclo | `app/ui/customer_history_page.py` | Mostrar detalle de fila seleccionada | Funcional |
+| Historial cliente | Ver premio | `app/ui/customer_history_page.py` | Abrir ficha del premio seleccionado | Funcional |
+| Historial cliente | Registrar nueva compra | `app/ui/customer_history_page.py` | Abrir compra con cliente preseleccionado | Funcional |
+| Historial cliente | Canjear premio disponible | `app/ui/customer_history_page.py` | Canjear premio disponible seleccionado | Funcional |
+| Panel principal | Indicadores | `app/repositories/dashboard.py`, `app/ui/main_window.py` | Mostrar compras hoy, premios y ciclos próximos | Funcional |
+
 ## Senales y callbacks revisados
 
 - `QPushButton.clicked.connect(...)` en `app/ui/main_window.py`.
@@ -76,6 +96,8 @@ Fecha de auditoria: 2026-07-12
 - `QLineEdit.textChanged.connect(...)` para busqueda en vivo.
 - `QTableWidget.doubleClicked.connect(...)` para abrir ficha.
 - `QSplitter` en `app/ui/purchase_page.py` para la pantalla de compra en dos columnas.
+- `QTableWidget.doubleClicked.connect(...)` en `app/ui/rewards_page.py` para abrir premios.
+- `QDialogButtonBox.accepted.connect(...)` en `app/ui/reward_dialogs.py` para confirmar canjes.
 
 ## Prueba automatica ejecutada
 
@@ -88,7 +110,7 @@ Comando:
 Resultado:
 
 ```text
-21 passed
+33 passed
 ```
 
 Cobertura funcional actual de pruebas:
@@ -109,6 +131,10 @@ Cobertura funcional actual de pruebas:
 - Prevencion de doble registro mediante `operation_id`.
 - Persistencia de compras, items, ciclos, premios y auditoria.
 - Layout de compra con dos columnas, boton guardar deshabilitado sin cliente y cambio de modalidad simple/detallada.
+- Listado de premios, filtros, busqueda y canje.
+- Validaciones de diferencia pagada y doble canje.
+- Historial de compras, ciclos y premios por cliente.
+- Dashboard con cifras reales desde SQLite.
 
 ## Prueba manual documentada
 
@@ -136,6 +162,10 @@ Flujo probado:
 12. `Ciclo actual` muestra seis stickers, total, promedio, faltantes e historial simple.
 13. `Registrar compra` usa dos columnas: clientes a la izquierda y formulario a la derecha.
 14. La columna derecha mantiene el boton guardar accesible mediante scroll en resoluciones bajas.
+15. `Premios disponibles` abre listado real con filtros.
+16. Canje de premio menor al valor permitido queda utilizado y desaparece de disponibles.
+17. Diferencia insuficiente se rechaza y diferencia correcta se acepta.
+18. `Ver historial` muestra compras, ciclos y premios del cliente.
 
 Flujo manual controlado de Fase 3/4:
 
@@ -153,8 +183,8 @@ Flujo manual controlado de Fase 3/4:
 | Fase 2 - Clientes | Buscar, nuevo, editar, ficha, activar/desactivar, duplicados, resumen de historial/ciclo/premios | Completada parcialmente: historial y premios detallados siguen en fases posteriores |
 | Fase 3 - Compras | Registro de compras, productos, total, ciclo correcto, evitar doble clic | Completada |
 | Fase 4 - Carton | Seis stickers, promedio parcial, completar ciclo y premio | Completada |
-| Fase 5 - Premios | Listado, ficha, canje, validaciones y doble canje | Pendiente |
-| Fase 6 - Historial y correcciones | Compras, ciclos, premios, anulacion, auditoria | Pendiente |
+| Fase 5 - Premios | Listado, ficha, canje, validaciones y doble canje | Completada |
+| Fase 6 - Historial y correcciones | Compras, ciclos, premios, anulacion, auditoria | Parcial: historial basico completado; correcciones/anulaciones pendientes |
 | Fase 7 - Reportes | Filtros, metricas, exportacion CSV/Excel | Pendiente |
 | Fase 8 - Configuracion y seguridad | Usuarios, roles, promociones, moneda, backups, auditoria | Pendiente |
 | Fase 9 - Backups | Crear/restaurar, Google Drive, ultimo backup | Pendiente |

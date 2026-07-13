@@ -23,12 +23,17 @@ from PySide6.QtWidgets import (
 
 from app.config.settings import SETTINGS
 from app.repositories.customers import CustomerRecord
+from app.repositories.dashboard import DashboardRepository
+from app.repositories.history import CustomerHistoryRepository
 from app.repositories.loyalty import LoyaltyRepository
 from app.services.customers import CustomerService
 from app.services.purchases import PurchaseService
+from app.services.rewards import RewardService
+from app.ui.customer_history_page import CustomerHistoryPage
 from app.ui.customer_dialog import CustomerDialog
 from app.ui.loyalty_card_page import LoyaltyCardPage
 from app.ui.purchase_page import PurchasePage
+from app.ui.rewards_page import RewardsPage
 from app.utils.money import format_money, money_from_db
 from app.utils.paths import database_path
 
@@ -46,7 +51,10 @@ class MainWindow(QMainWindow):
         super().__init__()
         self._customer_service = CustomerService(database_path())
         self._purchase_service = PurchaseService(database_path())
+        self._reward_service = RewardService(database_path())
         self._loyalty_repository = LoyaltyRepository(database_path())
+        self._history_repository = CustomerHistoryRepository(database_path())
+        self._dashboard_repository = DashboardRepository(database_path())
         self._selected_customer_id: int | None = None
         self._current_customers: list[CustomerRecord] = []
 
@@ -69,6 +77,19 @@ class MainWindow(QMainWindow):
             self._back_to_current_customer,
             self._show_purchase_for_customer,
         )
+        self.rewards_page = RewardsPage(
+            self._reward_service,
+            self._show_home,
+            self._after_reward_changed,
+        )
+        self.customer_history_page = CustomerHistoryPage(
+            self._customer_service,
+            self._history_repository,
+            self._reward_service,
+            self._back_to_current_customer,
+            self._show_purchase_for_customer,
+            self._after_reward_changed,
+        )
         self.placeholder_page = self._build_placeholder_page()
 
         self.stack.addWidget(self.home_page)
@@ -76,6 +97,8 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.customer_detail_page)
         self.stack.addWidget(self.purchase_page)
         self.stack.addWidget(self.loyalty_card_page)
+        self.stack.addWidget(self.rewards_page)
+        self.stack.addWidget(self.customer_history_page)
         self.stack.addWidget(self.placeholder_page)
 
         root = QWidget()
@@ -84,6 +107,7 @@ class MainWindow(QMainWindow):
         root_layout.addWidget(self.stack)
         root.setStyleSheet(self._stylesheet())
         self.setCentralWidget(root)
+        self._refresh_dashboard()
 
     def _build_home_page(self) -> QWidget:
         page = QWidget()
@@ -99,11 +123,16 @@ class MainWindow(QMainWindow):
         subtitle.setObjectName("Subtitle")
         subtitle.setAlignment(Qt.AlignCenter)
 
+        self.dashboard_label = QLabel()
+        self.dashboard_label.setObjectName("DetailInfo")
+        self.dashboard_label.setAlignment(Qt.AlignCenter)
+        self.dashboard_label.setWordWrap(True)
+
         buttons = [
             ("Buscar cliente", self._show_customer_search),
             ("Nuevo cliente", self._open_new_customer),
             ("Registrar compra", self._show_purchase_page),
-            ("Premios disponibles", lambda: self._show_placeholder("Premios disponibles", "Fase 5")),
+            ("Premios disponibles", self._show_rewards_page),
             ("Crear copia de seguridad", lambda: self._show_placeholder("Backups", "Fase 9")),
         ]
 
@@ -118,6 +147,7 @@ class MainWindow(QMainWindow):
         layout.addStretch(1)
         layout.addWidget(title)
         layout.addWidget(subtitle)
+        layout.addWidget(self.dashboard_label)
         layout.addSpacing(20)
         layout.addLayout(grid)
         layout.addStretch(2)
@@ -189,15 +219,11 @@ class MainWindow(QMainWindow):
         self.toggle_active_button = QPushButton("Desactivar cliente")
         self.toggle_active_button.clicked.connect(self._toggle_current_customer)
         history_button = QPushButton("Ver historial")
-        history_button.clicked.connect(
-            lambda: self._show_placeholder("Historial del cliente", "Fase 6")
-        )
+        history_button.clicked.connect(self._show_history_for_current_customer)
         cycle_button = QPushButton("Ciclo actual")
         cycle_button.clicked.connect(self._show_loyalty_card_for_current_customer)
         rewards_button = QPushButton("Premios disponibles")
-        rewards_button.clicked.connect(
-            lambda: self._show_placeholder("Premios disponibles", "Fase 5")
-        )
+        rewards_button.clicked.connect(self._show_rewards_for_current_customer)
 
         for button in (
             back_button,
@@ -253,7 +279,21 @@ class MainWindow(QMainWindow):
         return container
 
     def _show_home(self) -> None:
+        self._refresh_dashboard()
         self.stack.setCurrentWidget(self.home_page)
+
+    def _refresh_dashboard(self) -> None:
+        stats = self._dashboard_repository.stats()
+        self.dashboard_label.setText(
+            " | ".join(
+                [
+                    f"Compras hoy: {stats.purchases_today}",
+                    f"Premios disponibles: {stats.rewards_available}",
+                    f"Premios utilizados: {stats.rewards_used}",
+                    f"Ciclos a 1 compra: {stats.cycles_near_completion}",
+                ]
+            )
+        )
 
     def _show_customer_search(self) -> None:
         self._refresh_customer_table()
@@ -341,6 +381,7 @@ class MainWindow(QMainWindow):
 
     def _after_purchase_saved(self, result) -> None:
         self._refresh_customer_table()
+        self._refresh_dashboard()
         self._selected_customer_id = result.customer_id
         if self.stack.currentWidget() is self.loyalty_card_page:
             self.loyalty_card_page.refresh()
@@ -352,6 +393,32 @@ class MainWindow(QMainWindow):
             return
         self.loyalty_card_page.show_customer(self._selected_customer_id)
         self.stack.setCurrentWidget(self.loyalty_card_page)
+
+    def _show_rewards_page(self) -> None:
+        self.rewards_page.refresh()
+        self.stack.setCurrentWidget(self.rewards_page)
+
+    def _show_rewards_for_current_customer(self) -> None:
+        if self._selected_customer_id is None:
+            return
+        customer = self._customer_service.get_customer(self._selected_customer_id)
+        self.rewards_page.search_input.setText(customer.full_name if customer else "")
+        self.rewards_page.status_input.setCurrentIndex(1)
+        self.rewards_page.refresh()
+        self.stack.setCurrentWidget(self.rewards_page)
+
+    def _show_history_for_current_customer(self) -> None:
+        if self._selected_customer_id is None:
+            QMessageBox.information(self, "Seleccionar cliente", "Abrí primero la ficha de un cliente.")
+            return
+        self.customer_history_page.show_customer(self._selected_customer_id)
+        self.stack.setCurrentWidget(self.customer_history_page)
+
+    def _after_reward_changed(self, customer_id: int) -> None:
+        self._refresh_dashboard()
+        self._refresh_customer_table()
+        if self._selected_customer_id == customer_id:
+            self._show_customer_detail(customer_id)
 
     def _back_to_current_customer(self) -> None:
         if self._selected_customer_id is not None:
@@ -474,6 +541,11 @@ class MainWindow(QMainWindow):
                 selection-background-color: #cfe5df;
                 selection-color: #1f3839;
                 alternate-background-color: #fbfaf7;
+            }
+            QTabWidget::pane {
+                border: 1px solid #ded8ce;
+                background: #ffffff;
+                border-radius: 6px;
             }
             QLabel#Sticker {
                 background: #ffffff;

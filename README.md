@@ -58,11 +58,16 @@ Implementado en desarrollo:
 - Finalizacion automatica del ciclo en la sexta compra.
 - Creacion automatica de premio disponible.
 - Inicio automatico de un nuevo ciclo en la septima compra.
+- Listado real de premios disponibles, utilizados, vencidos y anulados.
+- Ficha completa de premio.
+- Canje de premio con validacion de diferencia pagada.
+- Historial basico de compras, ciclos y premios por cliente.
+- Indicadores del panel principal calculados desde SQLite.
 
 Pendiente por fases:
 
-- Canje de premios.
-- Historiales y correcciones.
+- Correcciones y anulaciones de compras.
+- Historial avanzado con edicion auditada.
 - Reportes/exportaciones.
 - Seguridad completa por usuarios y roles.
 - Backups/restauracion desde interfaz.
