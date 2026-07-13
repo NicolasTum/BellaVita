@@ -82,6 +82,23 @@ La auditoria funcional esta en:
 docs/auditoria_funcional.md
 ```
 
+## Identidad visual
+
+El logo oficial de Bella Vita esta guardado en:
+
+```text
+assets/images/logo_bellavita.png
+```
+
+Los iconos de aplicacion generados desde ese logo estan en:
+
+```text
+assets/icons/app_icon.icns
+assets/icons/app_icon.ico
+```
+
+La carga de recursos graficos esta centralizada en `app.ui.branding`, usando `app.utils.paths.resource_path()` para funcionar tanto en desarrollo como dentro de la aplicacion compilada. Los archivos `.spec` de PyInstaller incluyen la carpeta `assets` y usan estos iconos sin rutas absolutas.
+
 ## Base de datos
 
 La base real no se guarda dentro del codigo, junto al ejecutable ni dentro de los paquetes compilados.

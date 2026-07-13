@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
+    QFrame,
     QGridLayout,
     QHBoxLayout,
     QHeaderView,
@@ -30,6 +31,7 @@ from app.services.customers import CustomerService
 from app.services.purchases import PurchaseService
 from app.services.rewards import RewardService
 from app.services.settings import SettingsService
+from app.ui.branding import app_icon, logo_label
 from app.ui.customer_history_page import CustomerHistoryPage
 from app.ui.customer_dialog import CustomerDialog
 from app.ui.loyalty_card_page import LoyaltyCardPage
@@ -62,6 +64,7 @@ class MainWindow(QMainWindow):
         self._current_customers: list[CustomerRecord] = []
 
         self.setWindowTitle(f"{SETTINGS.app_name} {SETTINGS.version}")
+        self.setWindowIcon(app_icon())
         self.setMinimumSize(1100, 720)
 
         self.stack = QStackedWidget()
@@ -124,13 +127,7 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(18)
 
-        title = QLabel(SETTINGS.app_name)
-        title.setObjectName("Title")
-        title.setAlignment(Qt.AlignCenter)
-
-        subtitle = QLabel("Panel inicial del programa de fidelizacion")
-        subtitle.setObjectName("Subtitle")
-        subtitle.setAlignment(Qt.AlignCenter)
+        brand_header = self._brand_header()
 
         self.dashboard_label = QLabel()
         self.dashboard_label.setObjectName("DetailInfo")
@@ -143,6 +140,7 @@ class MainWindow(QMainWindow):
             ("Registrar compra", self._show_purchase_page),
             ("Premios disponibles", self._show_rewards_page),
             ("Crear copia de seguridad", lambda: self._show_placeholder("Backups", "Fase 9")),
+            ("Acerca de", self._show_about_dialog),
         ]
         if self._settings_service.can_open_settings():
             buttons.append(("Configuración", self._show_settings_page))
@@ -155,14 +153,44 @@ class MainWindow(QMainWindow):
             button.clicked.connect(slot)
             grid.addWidget(button, index // 2, index % 2)
 
-        layout.addStretch(1)
-        layout.addWidget(title)
-        layout.addWidget(subtitle)
+        layout.addWidget(brand_header)
+        layout.addSpacing(12)
         layout.addWidget(self.dashboard_label)
         layout.addSpacing(20)
         layout.addLayout(grid)
         layout.addStretch(2)
         return page
+
+    def _brand_header(self) -> QWidget:
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(22)
+
+        logo_card = QFrame()
+        logo_card.setObjectName("BrandLogoCard")
+        logo_layout = QHBoxLayout(logo_card)
+        logo_layout.setContentsMargins(18, 14, 18, 14)
+        logo_layout.addWidget(logo_label(100))
+
+        text_layout = QVBoxLayout()
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(2)
+
+        brand_name = QLabel("Bella Vita")
+        brand_name.setObjectName("BrandName")
+        brand_subtitle = QLabel("Club de Compras")
+        brand_subtitle.setObjectName("BrandSubtitle")
+
+        text_layout.addStretch(1)
+        text_layout.addWidget(brand_name)
+        text_layout.addWidget(brand_subtitle)
+        text_layout.addStretch(1)
+
+        layout.addWidget(logo_card)
+        layout.addLayout(text_layout)
+        layout.addStretch(1)
+        return container
 
     def _build_customer_search_page(self) -> QWidget:
         page = QWidget()
@@ -300,6 +328,7 @@ class MainWindow(QMainWindow):
                 [
                     f"Compras hoy: {stats.purchases_today}",
                     f"Premios disponibles: {stats.rewards_available}",
+                    f"Valor total de premios disponibles: {format_money(stats.rewards_available_value)}",
                     f"Premios utilizados: {stats.rewards_used}",
                     f"Ciclos a 1 compra: {stats.cycles_near_completion}",
                 ]
@@ -410,6 +439,36 @@ class MainWindow(QMainWindow):
         self.rewards_page.refresh()
         self.stack.setCurrentWidget(self.rewards_page)
 
+    def _show_about_dialog(self) -> None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Acerca de Bella Vita")
+        dialog.setWindowIcon(app_icon())
+        dialog.setStyleSheet(self._stylesheet())
+        dialog.setModal(True)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(28, 28, 28, 28)
+        layout.setSpacing(14)
+
+        logo = logo_label(120)
+        layout.addWidget(logo, alignment=Qt.AlignCenter)
+
+        title = QLabel("Bella Vita")
+        title.setObjectName("BrandName")
+        title.setAlignment(Qt.AlignCenter)
+        subtitle = QLabel(f"Club de Compras\nVersion {SETTINGS.version}")
+        subtitle.setObjectName("Subtitle")
+        subtitle.setAlignment(Qt.AlignCenter)
+
+        close_button = QPushButton("Cerrar")
+        close_button.clicked.connect(dialog.accept)
+
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+        layout.addSpacing(8)
+        layout.addWidget(close_button)
+        dialog.exec()
+
     def _show_settings_page(self) -> None:
         if not self._settings_service.can_open_settings():
             QMessageBox.warning(self, "Acceso denegado", "Solo un administrador puede abrir configuración.")
@@ -511,6 +570,21 @@ class MainWindow(QMainWindow):
             QLabel#Title {
                 font-size: 34px;
                 font-weight: 700;
+            }
+            QFrame#BrandLogoCard {
+                background: #ffffff;
+                border: 1px solid #ded8ce;
+                border-radius: 8px;
+            }
+            QLabel#BrandName {
+                color: #252525;
+                font-size: 36px;
+                font-weight: 700;
+            }
+            QLabel#BrandSubtitle {
+                color: #214f52;
+                font-size: 22px;
+                font-weight: 600;
             }
             QLabel#SectionTitle {
                 font-size: 26px;

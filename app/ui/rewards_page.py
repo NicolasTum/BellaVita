@@ -72,8 +72,9 @@ class RewardsPage(QWidget):
 
         self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels(
-            ["ID", "Cliente", "Ciclo", "Generado", "Valor maximo", "Estado", "Fecha de uso"]
+            ["ID", "Cliente", "Ciclo", "Fecha", "Valor del premio", "Estado", "Fecha de canje"]
         )
+        self.table.setColumnHidden(0, True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)

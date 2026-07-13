@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QApplication
 from app.database.schema import initialize_database
 from app.services.customers import CustomerService
 from app.services.purchases import PurchaseService
+from app.services.rewards import RewardService
 from app.services.settings import CurrentUser, SettingsPermissionError, SettingsService, SettingsValidationError
 from app.ui.purchase_page import PurchasePage
 
@@ -111,6 +112,9 @@ def test_new_eight_target_cycle_completes_at_eight_not_six(tmp_path) -> None:
     with sqlite3.connect(db_path) as connection:
         rewards = connection.execute("SELECT COUNT(*) FROM rewards").fetchone()[0]
     assert rewards == 1
+    reward = RewardService(db_path).list_rewards(status="available")[0]
+    assert reward.max_value == eighth.cycle_average
+    assert reward.target_purchase_count == 8
 
 
 @pytest.mark.parametrize("target", ["0", "-1", "51"])

@@ -49,9 +49,13 @@ class CustomerHistoryPage(QWidget):
         self.purchases_table = QTableWidget(0, 6)
         self.purchases_table.setHorizontalHeaderLabels(["Fecha", "Ciclo", "Sticker", "Descripción", "Total", "Estado"])
         self.cycles_table = QTableWidget(0, 7)
-        self.cycles_table.setHorizontalHeaderLabels(["Ciclo", "Inicio", "Fin", "Compras", "Total", "Promedio", "Estado"])
+        self.cycles_table.setHorizontalHeaderLabels(
+            ["Ciclo", "Inicio", "Fin", "Compras", "Total", "Promedio de compras", "Estado"]
+        )
         self.rewards_table = QTableWidget(0, 6)
-        self.rewards_table.setHorizontalHeaderLabels(["ID", "Ciclo", "Generado", "Valor", "Estado", "Uso/Prenda"])
+        self.rewards_table.setHorizontalHeaderLabels(
+            ["ID", "Ciclo", "Fecha", "Valor del premio", "Estado", "Uso/Prenda"]
+        )
         self.tabs.addTab(self.purchases_table, "Compras")
         self.tabs.addTab(self.cycles_table, "Ciclos")
         self.tabs.addTab(self.rewards_table, "Premios")
@@ -181,7 +185,7 @@ class CustomerHistoryPage(QWidget):
                     f"Fin: {self.cycles_table.item(row, 2).text() or '-'}",
                     f"Compras: {self.cycles_table.item(row, 3).text()}",
                     f"Total: {self.cycles_table.item(row, 4).text()}",
-                    f"Promedio: {self.cycles_table.item(row, 5).text()}",
+                    f"Promedio de compras: {self.cycles_table.item(row, 5).text()}",
                     f"Estado: {self.cycles_table.item(row, 6).text()}",
                 ]
             ),

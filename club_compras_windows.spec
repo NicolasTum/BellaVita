@@ -58,4 +58,5 @@ exe = EXE(
     runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
+    icon="assets/icons/app_icon.ico",
 )

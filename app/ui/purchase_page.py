@@ -461,7 +461,10 @@ class PurchasePage(QWidget):
             f"Faltan {result.missing_count} compra(s)."
         )
         if result.cycle_completed and result.reward_value is not None:
-            message += f"\nPremio generado: {format_money(result.reward_value)}."
+            message += (
+                f"\nPremio generado: {format_money(result.reward_value)}."
+                "\nEl premio equivale al promedio de las compras del ciclo."
+            )
         message += "\n\nPuede registrar la siguiente compra."
         QMessageBox.information(self, "Compra registrada", message)
         self._on_saved(result)

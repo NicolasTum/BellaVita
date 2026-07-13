@@ -59,7 +59,7 @@ class LoyaltyCardPage(QWidget):
         self._ensure_sticker_labels(SETTINGS.stickers_per_cycle)
 
         self.cycles_table = QTableWidget(0, 5)
-        self.cycles_table.setHorizontalHeaderLabels(["Ciclo", "Estado", "Compras", "Total", "Promedio"])
+        self.cycles_table.setHorizontalHeaderLabels(["Ciclo", "Estado", "Compras", "Total", "Promedio de compras"])
 
         actions = QHBoxLayout()
         back_button = QPushButton("Volver a ficha")
@@ -115,18 +115,27 @@ class LoyaltyCardPage(QWidget):
         missing = max(0, target - count)
         self.progress.setRange(0, target)
         self.progress.setValue(count)
-        self.summary.setText(
-            "\n".join(
-                [
-                    f"Cliente: {customer.full_name}",
-                    f"Compras completadas: {count}/{target}",
-                    f"Compras faltantes: {missing}",
-                    f"Total acumulado: {format_money(total) if total is not None else '$ 0.00'}",
-                    f"Promedio parcial/final: {format_money(average) if average is not None else '$ 0.00'}",
-                    f"Premios disponibles: {loyalty.available_rewards}",
-                ]
-            )
-        )
+        if cycle and cycle.status == "completed":
+            summary_lines = [
+                "¡Ciclo completado!",
+                f"Cliente: {customer.full_name}",
+                f"Compras completadas: {count}/{target}",
+                f"Total acumulado: {format_money(total) if total is not None else '$ 0.00'}",
+                f"Promedio de las {target} compras: {format_money(average) if average is not None else '$ 0.00'}",
+                f"Premio disponible para una prenda: {format_money(average) if average is not None else '$ 0.00'}",
+                "Premio generado según promedio",
+                f"Premios disponibles: {loyalty.available_rewards}",
+            ]
+        else:
+            summary_lines = [
+                f"Cliente: {customer.full_name}",
+                f"Compras completadas: {count}/{target}",
+                f"Compras faltantes: {missing}",
+                f"Total acumulado: {format_money(total) if total is not None else '$ 0.00'}",
+                f"Promedio de compras: {format_money(average) if average is not None else '$ 0.00'}",
+                f"Premios disponibles: {loyalty.available_rewards}",
+            ]
+        self.summary.setText("\n".join(summary_lines))
 
         for sticker in loyalty.stickers:
             label = self.sticker_labels[sticker.sticker_number - 1]

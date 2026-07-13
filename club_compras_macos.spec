@@ -74,7 +74,7 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name="Club de Compras.app",
-    icon=None,
+    icon="assets/icons/app_icon.icns",
     bundle_identifier="com.clubcompras.desktop",
     info_plist={
         "CFBundleName": "Club de Compras",

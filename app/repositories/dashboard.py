@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
+
+from app.utils.money import money_from_db
 
 
 @dataclass(frozen=True)
 class DashboardStats:
     purchases_today: int
     rewards_available: int
+    rewards_available_value: Decimal
     rewards_used: int
     cycles_near_completion: int
 
@@ -25,6 +29,9 @@ class DashboardRepository:
             rewards_available = connection.execute(
                 "SELECT COUNT(*) FROM rewards WHERE status = 'available'"
             ).fetchone()[0]
+            rewards_available_value = connection.execute(
+                "SELECT COALESCE(SUM(max_value), 0) FROM rewards WHERE status = 'available'"
+            ).fetchone()[0]
             rewards_used = connection.execute(
                 "SELECT COUNT(*) FROM rewards WHERE status = 'used'"
             ).fetchone()[0]
@@ -38,6 +45,7 @@ class DashboardRepository:
         return DashboardStats(
             purchases_today=purchases_today,
             rewards_available=rewards_available,
+            rewards_available_value=money_from_db(rewards_available_value),
             rewards_used=rewards_used,
             cycles_near_completion=cycles_near_completion,
         )

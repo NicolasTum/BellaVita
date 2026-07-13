@@ -16,6 +16,7 @@ class RewardRecord:
     phone: str | None
     email: str | None
     cycle_number: int
+    target_purchase_count: int
     cycle_id: int
     earned_at: str
     max_value: Decimal
@@ -61,7 +62,8 @@ class RewardRepository:
                 f"""
                 SELECT
                     r.id, r.customer_id, c.first_name || ' ' || c.last_name AS customer_name,
-                    c.phone, c.email, lc.cycle_number, r.cycle_id, r.earned_at,
+                    c.phone, c.email, lc.cycle_number, lc.target_purchase_count,
+                    r.cycle_id, r.earned_at,
                     r.max_value, r.status, r.used_at, r.delivered_item_description,
                     r.delivered_item_price, r.value_difference, r.notes,
                     r.delivered_by_user_id, r.created_at, r.updated_at
@@ -81,7 +83,8 @@ class RewardRepository:
                 """
                 SELECT
                     r.id, r.customer_id, c.first_name || ' ' || c.last_name AS customer_name,
-                    c.phone, c.email, lc.cycle_number, r.cycle_id, r.earned_at,
+                    c.phone, c.email, lc.cycle_number, lc.target_purchase_count,
+                    r.cycle_id, r.earned_at,
                     r.max_value, r.status, r.used_at, r.delivered_item_description,
                     r.delivered_item_price, r.value_difference, r.notes,
                     r.delivered_by_user_id, r.created_at, r.updated_at
@@ -103,16 +106,17 @@ class RewardRepository:
             phone=row[3],
             email=row[4],
             cycle_number=row[5],
-            cycle_id=row[6],
-            earned_at=row[7],
-            max_value=money_from_db(row[8]),
-            status=row[9],
-            used_at=row[10],
-            delivered_item_description=row[11],
-            delivered_item_price=money_from_db(row[12]) if row[12] is not None else None,
-            value_difference=money_from_db(row[13]) if row[13] is not None else None,
-            notes=row[14],
-            delivered_by_user_id=row[15],
-            created_at=row[16],
-            updated_at=row[17],
+            target_purchase_count=row[6],
+            cycle_id=row[7],
+            earned_at=row[8],
+            max_value=money_from_db(row[9]),
+            status=row[10],
+            used_at=row[11],
+            delivered_item_description=row[12],
+            delivered_item_price=money_from_db(row[13]) if row[13] is not None else None,
+            value_difference=money_from_db(row[14]) if row[14] is not None else None,
+            notes=row[15],
+            delivered_by_user_id=row[16],
+            created_at=row[17],
+            updated_at=row[18],
         )

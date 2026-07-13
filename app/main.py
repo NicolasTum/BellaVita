@@ -33,6 +33,7 @@ def run() -> int:
     try:
         from PySide6.QtWidgets import QApplication
 
+        from app.ui.branding import app_icon
         from app.ui.main_window import MainWindow
     except ImportError as exc:
         print("PySide6 no esta instalado. Ejecuta: pip install -r requirements.txt")
@@ -42,6 +43,7 @@ def run() -> int:
     application = QApplication(sys.argv)
     application.setApplicationName(SETTINGS.app_name)
     application.setApplicationVersion(SETTINGS.version)
+    application.setWindowIcon(app_icon())
 
     window = MainWindow()
     window.show()

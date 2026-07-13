@@ -61,6 +61,7 @@ def test_reward_listing_filter_and_search(tmp_path) -> None:
     assert used == []
     assert len(searched) == 1
     assert searched[0].max_value == Decimal("1500.00")
+    assert searched[0].target_purchase_count == 6
 
 
 @pytest.mark.parametrize("price,difference", [("1000", "0"), ("1500", "0"), ("1800", "300")])
@@ -181,6 +182,7 @@ def test_dashboard_stats_are_real(tmp_path) -> None:
     stats = DashboardRepository(db_path).stats()
 
     assert stats.rewards_available == 1
+    assert stats.rewards_available_value == Decimal("1500.00")
     assert stats.rewards_used == 0
     assert stats.cycles_near_completion == 1
     assert stats.purchases_today == 11

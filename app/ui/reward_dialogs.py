@@ -41,12 +41,14 @@ class RewardDetailDialog(QDialog):
                     f"Correo: {self._reward.email or '-'}",
                     f"Ciclo: {self._reward.cycle_number}",
                     f"Fecha de generacion: {self._reward.earned_at}",
-                    f"Valor maximo: {format_money(self._reward.max_value)}",
+                    f"Valor del premio: {format_money(self._reward.max_value)}",
+                    "Este valor corresponde al promedio de "
+                    f"las {self._reward.target_purchase_count} compras realizadas en el ciclo.",
                     f"Estado: {self._reward.status.upper()}",
                     f"Fecha de uso: {self._reward.used_at or '-'}",
                     f"Prenda entregada: {self._reward.delivered_item_description or '-'}",
-                    f"Precio de lista: {format_money(self._reward.delivered_item_price) if self._reward.delivered_item_price is not None else '-'}",
-                    f"Diferencia pagada: {format_money(self._reward.value_difference) if self._reward.value_difference is not None else '-'}",
+                    f"Precio de la prenda: {format_money(self._reward.delivered_item_price) if self._reward.delivered_item_price is not None else '-'}",
+                    f"Diferencia a pagar: {format_money(self._reward.value_difference) if self._reward.value_difference is not None else '-'}",
                     f"Observaciones: {self._reward.notes or '-'}",
                     f"Usuario entrega: {self._reward.delivered_by_user_id or '-'}",
                     f"Creado: {self._reward.created_at}",
@@ -92,7 +94,8 @@ class RewardRedeemDialog(QDialog):
         form = QFormLayout()
 
         self.customer_label = QLabel(self._reward.customer_name)
-        self.max_value_label = QLabel(format_money(self._reward.max_value))
+        self.reward_value_label = QLabel(format_money(self._reward.max_value))
+        self.available_credit_label = QLabel(format_money(self._reward.max_value))
         self.item_input = QLineEdit()
         self.price_input = QLineEdit()
         self.difference_input = QLineEdit("0")
@@ -103,10 +106,11 @@ class RewardRedeemDialog(QDialog):
         self.price_input.textChanged.connect(self._suggest_difference)
 
         form.addRow("Cliente", self.customer_label)
-        form.addRow("Valor maximo", self.max_value_label)
+        form.addRow("Valor del premio", self.reward_value_label)
+        form.addRow("Crédito disponible para la prenda", self.available_credit_label)
         form.addRow("Prenda entregada *", self.item_input)
-        form.addRow("Precio de lista *", self.price_input)
-        form.addRow("Diferencia pagada", self.difference_input)
+        form.addRow("Precio de la prenda elegida *", self.price_input)
+        form.addRow("Diferencia a pagar", self.difference_input)
         form.addRow("Observaciones", self.notes_input)
 
         self.buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
@@ -128,7 +132,8 @@ class RewardRedeemDialog(QDialog):
         required = max(Decimal("0.00"), price - self._reward.max_value)
         if required > 0:
             self.warning_label.setText(
-                f"El precio supera el premio. Diferencia sugerida: {format_money(required)}."
+                "El precio de la prenda supera el valor del premio. "
+                f"El cliente debe abonar una diferencia de {format_money(required)}."
             )
             if not self.difference_input.text().strip() or self.difference_input.text().strip() == "0":
                 self.difference_input.setText(str(required))
