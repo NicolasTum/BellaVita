@@ -4,23 +4,31 @@ import logging
 import sys
 
 from app.config.settings import SETTINGS
+from app.database.bootstrap import ensure_default_admin
 from app.database.schema import initialize_database
 from app.utils.paths import database_path, log_dir
 
 
 def configure_logging() -> None:
     logs = log_dir()
-    logs.mkdir(parents=True, exist_ok=True)
-    logging.basicConfig(
-        filename=logs / "club_compras.log",
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    )
+    logging_kwargs = {
+        "level": logging.INFO,
+        "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
+    }
+    try:
+        logs.mkdir(parents=True, exist_ok=True)
+        logging.basicConfig(filename=logs / "club_compras.log", **logging_kwargs)
+    except OSError:
+        logging.basicConfig(stream=sys.stderr, **logging_kwargs)
+        logging.exception("Could not initialize file logging")
 
 
 def run() -> int:
     configure_logging()
-    initialize_database(database_path())
+    db_path = database_path()
+    initialize_database(db_path)
+    if ensure_default_admin(db_path):
+        logging.info("Default admin user created")
 
     try:
         from PySide6.QtWidgets import QApplication

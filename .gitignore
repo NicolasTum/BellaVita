@@ -11,6 +11,8 @@ __pycache__/
 dist/
 build/
 *.spec
+!club_compras_macos.spec
+!club_compras_windows.spec
 *.egg-info/
 .pytest_cache/
 .mypy_cache/

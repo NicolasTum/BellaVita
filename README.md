@@ -1,6 +1,6 @@
 # Club de Compras
 
-Aplicacion de escritorio para Windows destinada a administrar un programa de fidelizacion de una tienda de ropa.
+Aplicacion de escritorio para Windows y macOS destinada a administrar un programa de fidelizacion de una tienda de ropa.
 
 ## Tecnologias
 
@@ -13,17 +13,20 @@ Aplicacion de escritorio para Windows destinada a administrar un programa de fid
 
 ## Desarrollo
 
+macOS o Linux:
+
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
 python -m app.main
 ```
 
-En macOS o Linux:
+Windows PowerShell:
 
-```bash
-source .venv/bin/activate
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\activate
 pip install -r requirements.txt
 python -m app.main
 ```
@@ -34,15 +37,60 @@ python -m app.main
 pytest
 ```
 
+## Estado funcional actual
+
+Implementado en desarrollo:
+
+- Navegacion principal con pantallas reales y boton volver.
+- Alta de clientes con validaciones.
+- Busqueda de clientes mientras se escribe.
+- Ficha completa basica del cliente.
+- Edicion de clientes.
+- Activacion y desactivacion logica.
+- Deteccion de posibles duplicados por telefono, correo o nombre y apellido.
+- Resumen en ficha de stickers actuales, premios disponibles y ultima compra.
+
+Pendiente por fases:
+
+- Compras y productos.
+- Carton visual de stickers.
+- Generacion y canje de premios.
+- Historiales y correcciones.
+- Reportes/exportaciones.
+- Seguridad completa por usuarios y roles.
+- Backups/restauracion desde interfaz.
+
+La auditoria funcional esta en:
+
+```text
+docs/auditoria_funcional.md
+```
+
 ## Base de datos
 
-La base real no se guarda dentro del codigo ni junto al ejecutable. En Windows se ubicara en:
+La base real no se guarda dentro del codigo, junto al ejecutable ni dentro de los paquetes compilados.
+
+En macOS se ubica en:
+
+```text
+~/Library/Application Support/ClubCompras/data/club_compras.db
+```
+
+En Windows se ubica en:
 
 ```text
 C:\Users\USUARIO\AppData\Local\ClubCompras\data\club_compras.db
 ```
 
-La base de datos real, backups, logs y exportaciones estan excluidos de Git.
+Tambien se resuelven de forma centralizada:
+
+- Datos de usuario: `app.utils.paths.user_data_dir()`
+- Base SQLite: `app.utils.paths.database_path()`
+- Logs: `app.utils.paths.log_dir()`
+- Backups: `app.utils.paths.backup_dir()`
+- Recursos empaquetados: `app.utils.paths.resource_path()`
+
+La base de datos real, backups, logs, exportaciones, `.env` y credenciales estan excluidos de Git y no se incluyen en PyInstaller.
 
 ## GitHub
 
@@ -64,11 +112,82 @@ git push -u origin main
 
 ## Windows
 
-Scripts previstos:
+Compilar el `.exe` desde Windows:
 
-- `scripts/run_dev.ps1`: ejecutar en desarrollo.
-- `scripts/build_windows.ps1`: generar un ejecutable con PyInstaller.
-- `installer/club_compras.iss`: base para instalador con Inno Setup.
+```powershell
+.\scripts\build_windows.ps1
+```
+
+El script instala dependencias, ejecuta `pytest` y compila con:
+
+```powershell
+.\.venv\Scripts\pyinstaller.exe --clean --noconfirm club_compras_windows.spec
+```
+
+El ejecutable queda en:
+
+```text
+dist/Club de Compras.exe
+```
+
+Notas:
+
+- El `.exe` debe generarse en Windows.
+- No se incluye la base real ni backups.
+- `installer/club_compras.iss` queda como base para Inno Setup.
+
+## macOS
+
+Compilar la aplicacion `.app` desde una Mac:
+
+```bash
+bash scripts/build_macos.sh
+```
+
+El script instala dependencias, ejecuta `pytest` y compila con:
+
+```bash
+.venv/bin/pyinstaller --clean --noconfirm club_compras_macos.spec
+```
+
+La aplicacion queda en:
+
+```text
+dist/Club de Compras.app
+```
+
+Para abrirla desde Terminal:
+
+```bash
+open "dist/Club de Compras.app"
+```
+
+La base real no se incluye dentro del paquete `.app`; se guarda en la carpeta de datos del usuario:
+
+```text
+~/Library/Application Support/ClubCompras/data/club_compras.db
+```
+
+## GitHub Actions
+
+El workflow manual esta en:
+
+```text
+.github/workflows/build-desktop.yml
+```
+
+Para ejecutarlo:
+
+1. Ir a GitHub Actions.
+2. Seleccionar `Build desktop apps`.
+3. Presionar `Run workflow`.
+
+El workflow compila en runners separados:
+
+- `macos-latest`: genera `club-compras-macos`.
+- `windows-latest`: genera `club-compras-windows`.
+
+Los compilados se publican como artifacts privados del workflow dentro del repositorio privado. Antes de cada compilacion se ejecutan las pruebas.
 
 ## Backups y Google Drive
 
