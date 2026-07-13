@@ -49,12 +49,18 @@ Implementado en desarrollo:
 - Activacion y desactivacion logica.
 - Deteccion de posibles duplicados por telefono, correo o nombre y apellido.
 - Resumen en ficha de stickers actuales, premios disponibles y ultima compra.
+- Registro de compras simples y detalladas.
+- Calculo automatico de subtotales y total.
+- Asignacion automatica al ciclo de fidelizacion.
+- Carton visual de seis stickers.
+- Calculo de promedio parcial y final con `Decimal`.
+- Finalizacion automatica del ciclo en la sexta compra.
+- Creacion automatica de premio disponible.
+- Inicio automatico de un nuevo ciclo en la septima compra.
 
 Pendiente por fases:
 
-- Compras y productos.
-- Carton visual de stickers.
-- Generacion y canje de premios.
+- Canje de premios.
 - Historiales y correcciones.
 - Reportes/exportaciones.
 - Seguridad completa por usuarios y roles.

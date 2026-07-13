@@ -53,7 +53,9 @@ CREATE TABLE IF NOT EXISTS loyalty_cycles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     customer_id INTEGER NOT NULL REFERENCES customers(id),
     cycle_number INTEGER NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('in_progress', 'completed', 'closed')),
+    status TEXT NOT NULL CHECK (status IN ('in_progress', 'completed', 'adjusted', 'closed')),
+    started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    valid_purchase_count INTEGER NOT NULL DEFAULT 0,
     total_amount NUMERIC NOT NULL DEFAULT 0,
     average_amount NUMERIC NOT NULL DEFAULT 0,
     completed_at TEXT,
@@ -74,6 +76,7 @@ CREATE TABLE IF NOT EXISTS purchases (
     notes TEXT,
     registered_by_user_id INTEGER REFERENCES users(id),
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'voided')),
+    operation_id TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(cycle_id, sticker_number)
@@ -106,6 +109,8 @@ CREATE TABLE IF NOT EXISTS rewards (
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rewards_cycle_id ON rewards(cycle_id);
+
 CREATE TABLE IF NOT EXISTS audit_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     occurred_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -133,3 +138,33 @@ def initialize_database(path: Path) -> None:
     with sqlite3.connect(path) as connection:
         connection.executescript(SCHEMA_SQL)
         connection.execute("PRAGMA foreign_keys = ON;")
+        _apply_compatible_upgrades(connection)
+
+
+def _column_names(connection: sqlite3.Connection, table_name: str) -> set[str]:
+    return {row[1] for row in connection.execute(f"PRAGMA table_info({table_name})")}
+
+
+def _apply_compatible_upgrades(connection: sqlite3.Connection) -> None:
+    cycle_columns = _column_names(connection, "loyalty_cycles")
+    if "started_at" not in cycle_columns:
+        connection.execute(
+            "ALTER TABLE loyalty_cycles ADD COLUMN started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP"
+        )
+    if "valid_purchase_count" not in cycle_columns:
+        connection.execute(
+            "ALTER TABLE loyalty_cycles ADD COLUMN valid_purchase_count INTEGER NOT NULL DEFAULT 0"
+        )
+
+    purchase_columns = _column_names(connection, "purchases")
+    if "operation_id" not in purchase_columns:
+        connection.execute("ALTER TABLE purchases ADD COLUMN operation_id TEXT")
+
+    connection.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_purchases_operation_id
+        ON purchases(operation_id)
+        WHERE operation_id IS NOT NULL
+        """
+    )
+    connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_rewards_cycle_id ON rewards(cycle_id)")

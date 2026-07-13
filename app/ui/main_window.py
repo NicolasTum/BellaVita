@@ -23,8 +23,13 @@ from PySide6.QtWidgets import (
 
 from app.config.settings import SETTINGS
 from app.repositories.customers import CustomerRecord
+from app.repositories.loyalty import LoyaltyRepository
 from app.services.customers import CustomerService
+from app.services.purchases import PurchaseService
 from app.ui.customer_dialog import CustomerDialog
+from app.ui.loyalty_card_page import LoyaltyCardPage
+from app.ui.purchase_page import PurchasePage
+from app.utils.money import format_money, money_from_db
 from app.utils.paths import database_path
 
 
@@ -40,6 +45,8 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self._customer_service = CustomerService(database_path())
+        self._purchase_service = PurchaseService(database_path())
+        self._loyalty_repository = LoyaltyRepository(database_path())
         self._selected_customer_id: int | None = None
         self._current_customers: list[CustomerRecord] = []
 
@@ -50,11 +57,25 @@ class MainWindow(QMainWindow):
         self.home_page = self._build_home_page()
         self.customer_search_page = self._build_customer_search_page()
         self.customer_detail_page = self._build_customer_detail_page()
+        self.purchase_page = PurchasePage(
+            self._customer_service,
+            self._purchase_service,
+            self._show_home,
+            self._after_purchase_saved,
+        )
+        self.loyalty_card_page = LoyaltyCardPage(
+            self._customer_service,
+            self._loyalty_repository,
+            self._back_to_current_customer,
+            self._show_purchase_for_customer,
+        )
         self.placeholder_page = self._build_placeholder_page()
 
         self.stack.addWidget(self.home_page)
         self.stack.addWidget(self.customer_search_page)
         self.stack.addWidget(self.customer_detail_page)
+        self.stack.addWidget(self.purchase_page)
+        self.stack.addWidget(self.loyalty_card_page)
         self.stack.addWidget(self.placeholder_page)
 
         root = QWidget()
@@ -81,7 +102,7 @@ class MainWindow(QMainWindow):
         buttons = [
             ("Buscar cliente", self._show_customer_search),
             ("Nuevo cliente", self._open_new_customer),
-            ("Registrar compra", lambda: self._show_placeholder("Registrar compra", "Fase 3")),
+            ("Registrar compra", self._show_purchase_page),
             ("Premios disponibles", lambda: self._show_placeholder("Premios disponibles", "Fase 5")),
             ("Crear copia de seguridad", lambda: self._show_placeholder("Backups", "Fase 9")),
         ]
@@ -172,9 +193,7 @@ class MainWindow(QMainWindow):
             lambda: self._show_placeholder("Historial del cliente", "Fase 6")
         )
         cycle_button = QPushButton("Ciclo actual")
-        cycle_button.clicked.connect(
-            lambda: self._show_placeholder("Carton de fidelizacion", "Fase 4")
-        )
+        cycle_button.clicked.connect(self._show_loyalty_card_for_current_customer)
         rewards_button = QPushButton("Premios disponibles")
         rewards_button.clicked.connect(
             lambda: self._show_placeholder("Premios disponibles", "Fase 5")
@@ -297,6 +316,10 @@ class MainWindow(QMainWindow):
                     f"Consentimiento promociones: {'Si' if customer.marketing_consent else 'No'}",
                     f"Alta: {customer.created_at}",
                     f"Stickers del ciclo actual: {customer.current_stickers}/{SETTINGS.stickers_per_cycle}",
+                    f"Total del ciclo actual: {format_money(money_from_db(customer.current_cycle_total))}",
+                    f"Promedio parcial: {format_money(money_from_db(customer.current_cycle_average))}",
+                    f"Compras faltantes: {max(0, SETTINGS.stickers_per_cycle - customer.current_stickers)}",
+                    f"Ciclos completados: {customer.completed_cycles}",
                     f"Premios disponibles: {customer.available_rewards}",
                     f"Ultima compra: {customer.last_purchase_at or '-'}",
                     f"Observaciones: {customer.notes or '-'}",
@@ -307,6 +330,34 @@ class MainWindow(QMainWindow):
             "Desactivar cliente" if customer.is_active else "Activar cliente"
         )
         self.stack.setCurrentWidget(self.customer_detail_page)
+
+    def _show_purchase_page(self) -> None:
+        self.purchase_page.refresh()
+        self.stack.setCurrentWidget(self.purchase_page)
+
+    def _show_purchase_for_customer(self, customer_id: int) -> None:
+        self.purchase_page.preselect_customer(customer_id)
+        self.stack.setCurrentWidget(self.purchase_page)
+
+    def _after_purchase_saved(self, result) -> None:
+        self._refresh_customer_table()
+        self._selected_customer_id = result.customer_id
+        if self.stack.currentWidget() is self.loyalty_card_page:
+            self.loyalty_card_page.refresh()
+        self._show_customer_detail(result.customer_id)
+
+    def _show_loyalty_card_for_current_customer(self) -> None:
+        if self._selected_customer_id is None:
+            QMessageBox.information(self, "Seleccionar cliente", "Abrí primero la ficha de un cliente.")
+            return
+        self.loyalty_card_page.show_customer(self._selected_customer_id)
+        self.stack.setCurrentWidget(self.loyalty_card_page)
+
+    def _back_to_current_customer(self) -> None:
+        if self._selected_customer_id is not None:
+            self._show_customer_detail(self._selected_customer_id)
+        else:
+            self._show_customer_search()
 
     def _edit_current_customer(self) -> None:
         if self._selected_customer_id is None:
@@ -385,6 +436,19 @@ class MainWindow(QMainWindow):
                 border-radius: 8px;
                 padding: 18px;
                 line-height: 1.45;
+            }
+            QLabel#Sticker {
+                background: #ffffff;
+                border: 2px dashed #bfb6aa;
+                border-radius: 8px;
+                padding: 10px;
+                color: #67615a;
+            }
+            QLabel#Sticker[complete="true"] {
+                background: #dceee8;
+                border: 2px solid #2f6f73;
+                color: #214f52;
+                font-weight: 700;
             }
             QLineEdit, QTextEdit, QTableWidget {
                 background: #ffffff;

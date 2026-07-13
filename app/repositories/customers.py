@@ -39,6 +39,9 @@ class CustomerRecord:
     current_stickers: int = 0
     available_rewards: int = 0
     last_purchase_at: str | None = None
+    current_cycle_total: str = "0.00"
+    current_cycle_average: str = "0.00"
+    completed_cycles: int = 0
 
     @property
     def full_name(self) -> str:
@@ -181,7 +184,26 @@ class CustomerRepository:
                         FROM purchases p
                         WHERE p.customer_id = c.id
                           AND p.status = 'active'
-                    ) AS last_purchase_at
+                    ) AS last_purchase_at,
+                    COALESCE((
+                        SELECT lc.total_amount
+                        FROM loyalty_cycles lc
+                        WHERE lc.customer_id = c.id AND lc.status = 'in_progress'
+                        ORDER BY lc.cycle_number DESC
+                        LIMIT 1
+                    ), 0) AS current_cycle_total,
+                    COALESCE((
+                        SELECT lc.average_amount
+                        FROM loyalty_cycles lc
+                        WHERE lc.customer_id = c.id AND lc.status = 'in_progress'
+                        ORDER BY lc.cycle_number DESC
+                        LIMIT 1
+                    ), 0) AS current_cycle_average,
+                    COALESCE((
+                        SELECT COUNT(*)
+                        FROM loyalty_cycles lc
+                        WHERE lc.customer_id = c.id AND lc.status = 'completed'
+                    ), 0) AS completed_cycles
                 FROM customers c
                 WHERE c.id = ?
                 """,
@@ -220,10 +242,13 @@ class CustomerRepository:
                     c.created_at,
                     COALESCE(active_cycle.stickers, 0) AS current_stickers,
                     COALESCE(available_rewards.count, 0) AS available_rewards,
-                    last_purchase.last_purchase_at
+                    last_purchase.last_purchase_at,
+                    COALESCE(active_cycle.total_amount, 0) AS current_cycle_total,
+                    COALESCE(active_cycle.average_amount, 0) AS current_cycle_average,
+                    COALESCE(completed_cycles.count, 0) AS completed_cycles
                 FROM customers c
                 LEFT JOIN (
-                    SELECT p.customer_id, COUNT(*) AS stickers
+                    SELECT p.customer_id, COUNT(*) AS stickers, lc.total_amount, lc.average_amount
                     FROM purchases p
                     JOIN loyalty_cycles lc ON lc.id = p.cycle_id
                     WHERE p.status = 'active' AND lc.status = 'in_progress'
@@ -241,6 +266,12 @@ class CustomerRepository:
                     WHERE status = 'active'
                     GROUP BY customer_id
                 ) last_purchase ON last_purchase.customer_id = c.id
+                LEFT JOIN (
+                    SELECT customer_id, COUNT(*) AS count
+                    FROM loyalty_cycles
+                    WHERE status = 'completed'
+                    GROUP BY customer_id
+                ) completed_cycles ON completed_cycles.customer_id = c.id
                 {where}
                 ORDER BY c.is_active DESC, c.last_name, c.first_name
                 LIMIT 100
@@ -299,4 +330,7 @@ class CustomerRepository:
             current_stickers=row[9],
             available_rewards=row[10],
             last_purchase_at=row[11],
+            current_cycle_total=str(row[12]),
+            current_cycle_average=str(row[13]),
+            completed_cycles=row[14],
         )
