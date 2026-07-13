@@ -15,6 +15,7 @@ class CycleSummary:
     customer_id: int
     cycle_number: int
     status: str
+    target_purchase_count: int
     valid_purchase_count: int
     total_amount: Decimal
     average_amount: Decimal
@@ -49,7 +50,7 @@ class LoyaltyRepository:
             current_cycle = self._fetch_cycle(
                 connection,
                 """
-                SELECT id, customer_id, cycle_number, status, valid_purchase_count,
+                SELECT id, customer_id, cycle_number, status, target_purchase_count, valid_purchase_count,
                        total_amount, average_amount, started_at, completed_at
                 FROM loyalty_cycles
                 WHERE customer_id = ? AND status = 'in_progress'
@@ -61,7 +62,7 @@ class LoyaltyRepository:
             latest_cycle = self._fetch_cycle(
                 connection,
                 """
-                SELECT id, customer_id, cycle_number, status, valid_purchase_count,
+                SELECT id, customer_id, cycle_number, status, target_purchase_count, valid_purchase_count,
                        total_amount, average_amount, started_at, completed_at
                 FROM loyalty_cycles
                 WHERE customer_id = ?
@@ -110,7 +111,7 @@ class LoyaltyRepository:
         with sqlite3.connect(self._database_path) as connection:
             rows = connection.execute(
                 """
-                SELECT id, customer_id, cycle_number, status, valid_purchase_count,
+                SELECT id, customer_id, cycle_number, status, target_purchase_count, valid_purchase_count,
                        total_amount, average_amount, started_at, completed_at
                 FROM loyalty_cycles
                 WHERE customer_id = ?
@@ -139,7 +140,15 @@ class LoyaltyRepository:
             purchases = {row[0]: row for row in rows}
 
         stickers: list[StickerSummary] = []
-        for sticker_number in range(1, SETTINGS.stickers_per_cycle + 1):
+        target = SETTINGS.stickers_per_cycle
+        if cycle_id is not None:
+            row = connection.execute(
+                "SELECT target_purchase_count FROM loyalty_cycles WHERE id = ?",
+                (cycle_id,),
+            ).fetchone()
+            if row:
+                target = row[0]
+        for sticker_number in range(1, target + 1):
             row = purchases.get(sticker_number)
             stickers.append(
                 StickerSummary(
@@ -162,9 +171,10 @@ class LoyaltyRepository:
             customer_id=row[1],
             cycle_number=row[2],
             status=row[3],
-            valid_purchase_count=row[4],
-            total_amount=money_from_db(row[5]),
-            average_amount=money_from_db(row[6]),
-            started_at=row[7],
-            completed_at=row[8],
+            target_purchase_count=row[4],
+            valid_purchase_count=row[5],
+            total_amount=money_from_db(row[6]),
+            average_amount=money_from_db(row[7]),
+            started_at=row[8],
+            completed_at=row[9],
         )

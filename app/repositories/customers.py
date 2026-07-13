@@ -41,6 +41,7 @@ class CustomerRecord:
     last_purchase_at: str | None = None
     current_cycle_total: str = "0.00"
     current_cycle_average: str = "0.00"
+    current_cycle_target: int = 6
     completed_cycles: int = 0
 
     @property
@@ -200,6 +201,13 @@ class CustomerRepository:
                         LIMIT 1
                     ), 0) AS current_cycle_average,
                     COALESCE((
+                        SELECT lc.target_purchase_count
+                        FROM loyalty_cycles lc
+                        WHERE lc.customer_id = c.id AND lc.status = 'in_progress'
+                        ORDER BY lc.cycle_number DESC
+                        LIMIT 1
+                    ), 6) AS current_cycle_target,
+                    COALESCE((
                         SELECT COUNT(*)
                         FROM loyalty_cycles lc
                         WHERE lc.customer_id = c.id AND lc.status = 'completed'
@@ -245,10 +253,12 @@ class CustomerRepository:
                     last_purchase.last_purchase_at,
                     COALESCE(active_cycle.total_amount, 0) AS current_cycle_total,
                     COALESCE(active_cycle.average_amount, 0) AS current_cycle_average,
+                    COALESCE(active_cycle.target_purchase_count, 6) AS current_cycle_target,
                     COALESCE(completed_cycles.count, 0) AS completed_cycles
                 FROM customers c
                 LEFT JOIN (
-                    SELECT p.customer_id, COUNT(*) AS stickers, lc.total_amount, lc.average_amount
+                    SELECT p.customer_id, COUNT(*) AS stickers, lc.total_amount, lc.average_amount,
+                           lc.target_purchase_count
                     FROM purchases p
                     JOIN loyalty_cycles lc ON lc.id = p.cycle_id
                     WHERE p.status = 'active' AND lc.status = 'in_progress'
@@ -332,5 +342,6 @@ class CustomerRepository:
             last_purchase_at=row[11],
             current_cycle_total=str(row[12]),
             current_cycle_average=str(row[13]),
-            completed_cycles=row[14],
+            current_cycle_target=row[14],
+            completed_cycles=row[15],
         )

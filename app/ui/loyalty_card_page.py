@@ -56,14 +56,7 @@ class LoyaltyCardPage(QWidget):
 
         self.sticker_grid = QGridLayout()
         self.sticker_labels: list[QLabel] = []
-        for index in range(SETTINGS.stickers_per_cycle):
-            label = QLabel()
-            label.setAlignment(Qt.AlignCenter)
-            label.setObjectName("Sticker")
-            label.setMinimumHeight(96)
-            label.setWordWrap(True)
-            self.sticker_labels.append(label)
-            self.sticker_grid.addWidget(label, index // 3, index % 3)
+        self._ensure_sticker_labels(SETTINGS.stickers_per_cycle)
 
         self.cycles_table = QTableWidget(0, 5)
         self.cycles_table.setHorizontalHeaderLabels(["Ciclo", "Estado", "Compras", "Total", "Promedio"])
@@ -108,21 +101,25 @@ class LoyaltyCardPage(QWidget):
                 f"Ciclo {cycle.cycle_number} - "
                 f"{'EN PROGRESO' if cycle.status == 'in_progress' else 'COMPLETADO'}"
             )
+            target = cycle.target_purchase_count
             count = cycle.valid_purchase_count
             total = cycle.total_amount
             average = cycle.average_amount
         else:
             self.subtitle.setText("Sin ciclo iniciado")
+            target = SETTINGS.stickers_per_cycle
             count = 0
             total = average = None
 
-        missing = max(0, SETTINGS.stickers_per_cycle - count)
+        self._ensure_sticker_labels(target)
+        missing = max(0, target - count)
+        self.progress.setRange(0, target)
         self.progress.setValue(count)
         self.summary.setText(
             "\n".join(
                 [
                     f"Cliente: {customer.full_name}",
-                    f"Compras completadas: {count}/{SETTINGS.stickers_per_cycle}",
+                    f"Compras completadas: {count}/{target}",
                     f"Compras faltantes: {missing}",
                     f"Total acumulado: {format_money(total) if total is not None else '$ 0.00'}",
                     f"Promedio parcial/final: {format_money(average) if average is not None else '$ 0.00'}",
@@ -152,7 +149,7 @@ class LoyaltyCardPage(QWidget):
             values = [
                 str(cycle_row.cycle_number),
                 "EN PROGRESO" if cycle_row.status == "in_progress" else "COMPLETADO",
-                f"{cycle_row.valid_purchase_count}/{SETTINGS.stickers_per_cycle}",
+                f"{cycle_row.valid_purchase_count}/{cycle_row.target_purchase_count}",
                 format_money(cycle_row.total_amount),
                 format_money(cycle_row.average_amount),
             ]
@@ -162,3 +159,16 @@ class LoyaltyCardPage(QWidget):
     def _register_purchase(self) -> None:
         if self._customer_id is not None:
             self._on_register_purchase(self._customer_id)
+
+    def _ensure_sticker_labels(self, target: int) -> None:
+        while len(self.sticker_labels) < target:
+            index = len(self.sticker_labels)
+            label = QLabel()
+            label.setAlignment(Qt.AlignCenter)
+            label.setObjectName("Sticker")
+            label.setMinimumHeight(96)
+            label.setWordWrap(True)
+            self.sticker_labels.append(label)
+            self.sticker_grid.addWidget(label, index // 4, index % 4)
+        for index, label in enumerate(self.sticker_labels):
+            label.setVisible(index < target)

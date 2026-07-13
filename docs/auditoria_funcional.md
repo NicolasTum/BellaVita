@@ -17,6 +17,15 @@ Fecha de auditoria: 2026-07-12
 | Exportaciones | `/Users/nicolastumaian/Library/Application Support/ClubCompras/exports` |
 | App macOS compilada | `/Users/nicolastumaian/Documents/BellaVita/club_compras/dist/Club de Compras.app` |
 
+## Migraciones aplicadas
+
+| Tabla | Cambio | Motivo |
+|---|---|---|
+| `loyalty_cycles` | `target_purchase_count INTEGER NOT NULL DEFAULT 6` | Conservar el objetivo de compras de cada ciclo aunque cambie la configuracion futura |
+| `purchases` | Rebuild compatible del check de `sticker_number` a `>= 1` | Permitir ciclos nuevos con mas de 6 stickers |
+| `purchase_items` | Rebuild de FK si apuntaba a tabla legacy durante migracion SQLite | Mantener integridad al migrar bases existentes |
+| `app_settings` | Valores por defecto de tienda, promocion, correo y moneda | Evitar configuracion fija en codigo |
+
 ## Auditoria inicial encontrada
 
 | Pantalla | Boton o accion | Archivo | Accion esperada | Estado inicial |
@@ -89,6 +98,19 @@ Fecha de auditoria: 2026-07-12
 | Historial cliente | Canjear premio disponible | `app/ui/customer_history_page.py` | Canjear premio disponible seleccionado | Funcional |
 | Panel principal | Indicadores | `app/repositories/dashboard.py`, `app/ui/main_window.py` | Mostrar compras hoy, premios y ciclos próximos | Funcional |
 
+## Estado despues de mejoras de configuracion y flujo post-compra
+
+| Pantalla | Boton o accion | Archivo | Accion esperada | Estado actual |
+|---|---|---|---|---|
+| Registrar compra | Guardar compra | `app/ui/purchase_page.py`, `app/services/purchases.py` | Guardar, mostrar resumen, limpiar formulario y quedar listo para otra compra | Funcional |
+| Registrar compra | Buscador de clientes | `app/ui/purchase_page.py` | Recibir foco despues de guardar | Funcional |
+| Registrar compra | Cliente seleccionado | `app/ui/purchase_page.py` | Deseleccionarse despues de guardar | Funcional |
+| Panel principal | Configuracion | `app/ui/main_window.py`, `app/ui/settings_page.py` | Abrir configuracion solo para admin | Funcional |
+| Configuracion | Promocion | `app/ui/settings_page.py`, `app/services/settings.py` | Cambiar objetivo de compras, nombre, descripcion y estado | Funcional |
+| Configuracion | Correo promociones | `app/ui/settings_page.py`, `app/services/settings.py` | Guardar datos para futura integracion sin contrasenas | Funcional |
+| Configuracion | Datos generales | `app/ui/settings_page.py`, `app/services/settings.py` | Guardar datos de tienda, moneda y textos legales | Funcional |
+| Configuracion | Guardar cambios | `app/services/settings.py` | Validar, persistir en `app_settings` y auditar | Funcional |
+
 ## Senales y callbacks revisados
 
 - `QPushButton.clicked.connect(...)` en `app/ui/main_window.py`.
@@ -110,7 +132,7 @@ Comando:
 Resultado:
 
 ```text
-33 passed
+43 passed
 ```
 
 Cobertura funcional actual de pruebas:
@@ -135,6 +157,10 @@ Cobertura funcional actual de pruebas:
 - Validaciones de diferencia pagada y doble canje.
 - Historial de compras, ciclos y premios por cliente.
 - Dashboard con cifras reales desde SQLite.
+- Configuracion central en `app_settings`.
+- Objetivo de stickers configurable entre 1 y 50.
+- `target_purchase_count` guardado por ciclo.
+- Flujo post-compra vuelve a registro vacío y enfoca buscador.
 
 ## Prueba manual documentada
 
@@ -166,6 +192,8 @@ Flujo probado:
 16. Canje de premio menor al valor permitido queda utilizado y desaparece de disponibles.
 17. Diferencia insuficiente se rechaza y diferencia correcta se acepta.
 18. `Ver historial` muestra compras, ciclos y premios del cliente.
+19. Despues de registrar una compra la pantalla queda lista para otro cliente.
+20. Configuracion permite cambiar el objetivo para ciclos nuevos sin alterar ciclos existentes.
 
 Flujo manual controlado de Fase 3/4:
 
@@ -186,5 +214,5 @@ Flujo manual controlado de Fase 3/4:
 | Fase 5 - Premios | Listado, ficha, canje, validaciones y doble canje | Completada |
 | Fase 6 - Historial y correcciones | Compras, ciclos, premios, anulacion, auditoria | Parcial: historial basico completado; correcciones/anulaciones pendientes |
 | Fase 7 - Reportes | Filtros, metricas, exportacion CSV/Excel | Pendiente |
-| Fase 8 - Configuracion y seguridad | Usuarios, roles, promociones, moneda, backups, auditoria | Pendiente |
+| Fase 8 - Configuracion y seguridad | Usuarios, roles, promociones, moneda, backups, auditoria | Parcial: configuracion admin implementada; usuarios/roles avanzados pendientes |
 | Fase 9 - Backups | Crear/restaurar, Google Drive, ultimo backup | Pendiente |

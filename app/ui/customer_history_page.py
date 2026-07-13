@@ -113,7 +113,7 @@ class CustomerHistoryPage(QWidget):
                 str(cycle.cycle_number),
                 cycle.started_at,
                 cycle.completed_at or "",
-                str(cycle.valid_purchase_count),
+                f"{cycle.valid_purchase_count}/{cycle.target_purchase_count}",
                 format_money(cycle.total_amount),
                 format_money(cycle.average_amount),
                 cycle.status,

@@ -29,11 +29,13 @@ from app.repositories.loyalty import LoyaltyRepository
 from app.services.customers import CustomerService
 from app.services.purchases import PurchaseService
 from app.services.rewards import RewardService
+from app.services.settings import SettingsService
 from app.ui.customer_history_page import CustomerHistoryPage
 from app.ui.customer_dialog import CustomerDialog
 from app.ui.loyalty_card_page import LoyaltyCardPage
 from app.ui.purchase_page import PurchasePage
 from app.ui.rewards_page import RewardsPage
+from app.ui.settings_page import SettingsPage
 from app.utils.money import format_money, money_from_db
 from app.utils.paths import database_path
 
@@ -50,7 +52,8 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self._customer_service = CustomerService(database_path())
-        self._purchase_service = PurchaseService(database_path())
+        self._settings_service = SettingsService(database_path())
+        self._purchase_service = PurchaseService(database_path(), self._settings_service)
         self._reward_service = RewardService(database_path())
         self._loyalty_repository = LoyaltyRepository(database_path())
         self._history_repository = CustomerHistoryRepository(database_path())
@@ -90,6 +93,11 @@ class MainWindow(QMainWindow):
             self._show_purchase_for_customer,
             self._after_reward_changed,
         )
+        self.settings_page = SettingsPage(
+            self._settings_service,
+            self._show_home,
+            self._after_settings_saved,
+        )
         self.placeholder_page = self._build_placeholder_page()
 
         self.stack.addWidget(self.home_page)
@@ -99,6 +107,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.loyalty_card_page)
         self.stack.addWidget(self.rewards_page)
         self.stack.addWidget(self.customer_history_page)
+        self.stack.addWidget(self.settings_page)
         self.stack.addWidget(self.placeholder_page)
 
         root = QWidget()
@@ -135,6 +144,8 @@ class MainWindow(QMainWindow):
             ("Premios disponibles", self._show_rewards_page),
             ("Crear copia de seguridad", lambda: self._show_placeholder("Backups", "Fase 9")),
         ]
+        if self._settings_service.can_open_settings():
+            buttons.append(("Configuración", self._show_settings_page))
 
         grid = QGridLayout()
         grid.setSpacing(14)
@@ -319,7 +330,7 @@ class MainWindow(QMainWindow):
                 customer.full_name,
                 customer.phone or "",
                 customer.email or "",
-                f"{customer.current_stickers}/{SETTINGS.stickers_per_cycle}",
+                f"{customer.current_stickers}/{customer.current_cycle_target}",
                 str(customer.available_rewards),
                 "Activo" if customer.is_active else "Inactivo",
             ]
@@ -355,10 +366,10 @@ class MainWindow(QMainWindow):
                     f"Estado: {'Activo' if customer.is_active else 'Inactivo'}",
                     f"Consentimiento promociones: {'Si' if customer.marketing_consent else 'No'}",
                     f"Alta: {customer.created_at}",
-                    f"Stickers del ciclo actual: {customer.current_stickers}/{SETTINGS.stickers_per_cycle}",
+                    f"Stickers del ciclo actual: {customer.current_stickers}/{customer.current_cycle_target}",
                     f"Total del ciclo actual: {format_money(money_from_db(customer.current_cycle_total))}",
                     f"Promedio parcial: {format_money(money_from_db(customer.current_cycle_average))}",
-                    f"Compras faltantes: {max(0, SETTINGS.stickers_per_cycle - customer.current_stickers)}",
+                    f"Compras faltantes: {max(0, customer.current_cycle_target - customer.current_stickers)}",
                     f"Ciclos completados: {customer.completed_cycles}",
                     f"Premios disponibles: {customer.available_rewards}",
                     f"Ultima compra: {customer.last_purchase_at or '-'}",
@@ -385,7 +396,8 @@ class MainWindow(QMainWindow):
         self._selected_customer_id = result.customer_id
         if self.stack.currentWidget() is self.loyalty_card_page:
             self.loyalty_card_page.refresh()
-        self._show_customer_detail(result.customer_id)
+        self.purchase_page.refresh()
+        self.stack.setCurrentWidget(self.purchase_page)
 
     def _show_loyalty_card_for_current_customer(self) -> None:
         if self._selected_customer_id is None:
@@ -397,6 +409,17 @@ class MainWindow(QMainWindow):
     def _show_rewards_page(self) -> None:
         self.rewards_page.refresh()
         self.stack.setCurrentWidget(self.rewards_page)
+
+    def _show_settings_page(self) -> None:
+        if not self._settings_service.can_open_settings():
+            QMessageBox.warning(self, "Acceso denegado", "Solo un administrador puede abrir configuración.")
+            return
+        self.settings_page.load_settings()
+        self.stack.setCurrentWidget(self.settings_page)
+
+    def _after_settings_saved(self) -> None:
+        self._refresh_dashboard()
+        self.purchase_page.refresh()
 
     def _show_rewards_for_current_customer(self) -> None:
         if self._selected_customer_id is None:

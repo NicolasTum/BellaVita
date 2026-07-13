@@ -63,13 +63,17 @@ Implementado en desarrollo:
 - Canje de premio con validacion de diferencia pagada.
 - Historial basico de compras, ciclos y premios por cliente.
 - Indicadores del panel principal calculados desde SQLite.
+- Flujo post-compra optimizado para registrar compras consecutivas.
+- Configuracion de administrador guardada en `app_settings`.
+- Cantidad objetivo de compras por ciclo configurable; cada ciclo conserva su propio objetivo.
+- Datos generales de tienda y correo promocional preparados para integraciones futuras.
 
 Pendiente por fases:
 
 - Correcciones y anulaciones de compras.
 - Historial avanzado con edicion auditada.
 - Reportes/exportaciones.
-- Seguridad completa por usuarios y roles.
+- Seguridad completa por usuarios y roles reales.
 - Backups/restauracion desde interfaz.
 
 La auditoria funcional esta en:
@@ -103,6 +107,12 @@ Tambien se resuelven de forma centralizada:
 - Recursos empaquetados: `app.utils.paths.resource_path()`
 
 La base de datos real, backups, logs, exportaciones, `.env` y credenciales estan excluidos de Git y no se incluyen en PyInstaller.
+
+Migraciones actuales:
+
+- `loyalty_cycles.target_purchase_count`: guarda el objetivo de compras de cada ciclo.
+- `purchases.sticker_number`: permite objetivos configurables mayores a 6.
+- `app_settings`: guarda promocion, tienda, moneda y datos de correo promocional.
 
 ## GitHub
 

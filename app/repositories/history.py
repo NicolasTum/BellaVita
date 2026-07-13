@@ -25,6 +25,7 @@ class CycleHistoryRow:
     cycle_number: int
     started_at: str
     completed_at: str | None
+    target_purchase_count: int
     valid_purchase_count: int
     total_amount: Decimal
     average_amount: Decimal
@@ -66,7 +67,7 @@ class CustomerHistoryRepository:
         with sqlite3.connect(self._database_path) as connection:
             rows = connection.execute(
                 """
-                SELECT id, cycle_number, started_at, completed_at, valid_purchase_count,
+                SELECT id, cycle_number, started_at, completed_at, target_purchase_count, valid_purchase_count,
                        total_amount, average_amount, status
                 FROM loyalty_cycles
                 WHERE customer_id = ?
@@ -76,7 +77,7 @@ class CustomerHistoryRepository:
             ).fetchall()
         return [
             CycleHistoryRow(
-                row[0], row[1], row[2], row[3], row[4], money_from_db(row[5]), money_from_db(row[6]), row[7]
+                row[0], row[1], row[2], row[3], row[4], row[5], money_from_db(row[6]), money_from_db(row[7]), row[8]
             )
             for row in rows
         ]

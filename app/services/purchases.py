@@ -6,7 +6,7 @@ from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
 
-from app.config.settings import SETTINGS
+from app.services.settings import SettingsService
 from app.utils.money import money_from_db, money_to_db, to_decimal
 
 
@@ -43,6 +43,7 @@ class PurchaseResult:
     cycle_id: int
     cycle_number: int
     sticker_number: int
+    target_purchase_count: int
     missing_count: int
     cycle_completed: bool
     reward_id: int | None
@@ -53,8 +54,9 @@ class PurchaseResult:
 
 
 class PurchaseService:
-    def __init__(self, database_path: Path) -> None:
+    def __init__(self, database_path: Path, settings_service: SettingsService | None = None) -> None:
         self._database_path = database_path
+        self._settings_service = settings_service or SettingsService(database_path)
 
     def build_simple_purchase(
         self,
@@ -126,7 +128,8 @@ class PurchaseService:
                     cycle_id=existing[2],
                     cycle_number=existing[3],
                     sticker_number=existing[4],
-                    missing_count=max(0, SETTINGS.stickers_per_cycle - cycle["valid_purchase_count"]),
+                    target_purchase_count=cycle["target_purchase_count"],
+                    missing_count=max(0, cycle["target_purchase_count"] - cycle["valid_purchase_count"]),
                     cycle_completed=cycle["status"] == "completed",
                     reward_id=reward[0] if reward else None,
                     reward_value=money_from_db(reward[1]) if reward else None,
@@ -145,8 +148,8 @@ class PurchaseService:
                 raise PurchaseValidationError("No se pueden registrar compras para clientes inactivos.")
 
             cycle = self._get_or_create_active_cycle(connection, purchase.customer_id)
-            if cycle["valid_purchase_count"] >= SETTINGS.stickers_per_cycle:
-                raise PurchaseValidationError("El ciclo ya tiene seis compras.")
+            if cycle["valid_purchase_count"] >= cycle["target_purchase_count"]:
+                raise PurchaseValidationError("El ciclo ya está completo.")
 
             sticker_number = cycle["valid_purchase_count"] + 1
             cursor = connection.execute(
@@ -188,7 +191,7 @@ class PurchaseService:
 
             count, total = self._cycle_totals(connection, cycle["id"])
             partial_average = (total / Decimal(count)).quantize(Decimal("0.01")) if count else Decimal("0.00")
-            cycle_completed = count == SETTINGS.stickers_per_cycle
+            cycle_completed = count == cycle["target_purchase_count"]
             reward_id: int | None = None
             reward_value: Decimal | None = None
 
@@ -267,7 +270,8 @@ class PurchaseService:
                 cycle_id=cycle["id"],
                 cycle_number=cycle["cycle_number"],
                 sticker_number=sticker_number,
-                missing_count=max(0, SETTINGS.stickers_per_cycle - count),
+                target_purchase_count=cycle["target_purchase_count"],
+                missing_count=max(0, cycle["target_purchase_count"] - count),
                 cycle_completed=cycle_completed,
                 reward_id=reward_id,
                 reward_value=reward_value,
@@ -313,7 +317,8 @@ class PurchaseService:
     def _get_or_create_active_cycle(self, connection: sqlite3.Connection, customer_id: int) -> dict:
         row = connection.execute(
             """
-            SELECT id, customer_id, cycle_number, status, valid_purchase_count, total_amount, average_amount
+            SELECT id, customer_id, cycle_number, status, valid_purchase_count, total_amount, average_amount,
+                   target_purchase_count
             FROM loyalty_cycles
             WHERE customer_id = ? AND status = 'in_progress'
             ORDER BY cycle_number DESC
@@ -328,12 +333,13 @@ class PurchaseService:
             "SELECT COALESCE(MAX(cycle_number), 0) + 1 FROM loyalty_cycles WHERE customer_id = ?",
             (customer_id,),
         ).fetchone()[0]
+        target_purchase_count = self._settings_service.loyalty_target_purchase_count()
         cursor = connection.execute(
             """
-            INSERT INTO loyalty_cycles (customer_id, cycle_number, status)
-            VALUES (?, ?, 'in_progress')
+            INSERT INTO loyalty_cycles (customer_id, cycle_number, status, target_purchase_count)
+            VALUES (?, ?, 'in_progress', ?)
             """,
-            (customer_id, next_number),
+            (customer_id, next_number, target_purchase_count),
         )
         cycle_id = int(cursor.lastrowid)
         self._audit(
@@ -350,6 +356,7 @@ class PurchaseService:
             "cycle_number": next_number,
             "status": "in_progress",
             "valid_purchase_count": 0,
+            "target_purchase_count": target_purchase_count,
             "total_amount": "0.00",
             "average_amount": "0.00",
         }
@@ -357,7 +364,8 @@ class PurchaseService:
     def _cycle_by_id(self, connection: sqlite3.Connection, cycle_id: int) -> dict:
         row = connection.execute(
             """
-            SELECT id, customer_id, cycle_number, status, valid_purchase_count, total_amount, average_amount
+            SELECT id, customer_id, cycle_number, status, valid_purchase_count, total_amount, average_amount,
+                   target_purchase_count
             FROM loyalty_cycles
             WHERE id = ?
             """,
@@ -375,6 +383,7 @@ class PurchaseService:
             "valid_purchase_count": row[4],
             "total_amount": row[5],
             "average_amount": row[6],
+            "target_purchase_count": row[7],
         }
 
     def _cycle_totals(self, connection: sqlite3.Connection, cycle_id: int) -> tuple[int, Decimal]:

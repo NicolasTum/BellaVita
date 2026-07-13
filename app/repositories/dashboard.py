@@ -32,7 +32,7 @@ class DashboardRepository:
                 """
                 SELECT COUNT(*)
                 FROM loyalty_cycles
-                WHERE status = 'in_progress' AND valid_purchase_count = 5
+                WHERE status = 'in_progress' AND valid_purchase_count = target_purchase_count - 1
                 """
             ).fetchone()[0]
         return DashboardStats(

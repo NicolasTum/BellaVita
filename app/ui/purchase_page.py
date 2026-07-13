@@ -262,15 +262,24 @@ class PurchasePage(QWidget):
             self._update_customer_info()
         self.refresh()
 
+    def reset_for_next_purchase(self) -> None:
+        self._selected_customer = None
+        self.customer_table.clearSelection()
+        self._clear_form(clear_customer=True)
+        self.customer_search_input.clear()
+        self._refresh_customer_table()
+        self.customer_search_input.setFocus()
+
     def _refresh_customer_table(self) -> None:
         customers = self._customer_service.search_customers(self.customer_search_input.text())
         self.customer_table.setRowCount(len(customers))
         for row_index, customer in enumerate(customers):
+            target = customer.current_cycle_target
             values = [
                 str(customer.id),
                 customer.full_name,
                 customer.phone or "",
-                f"{customer.current_stickers}/{SETTINGS.stickers_per_cycle}",
+                f"{customer.current_stickers}/{target}",
                 "Activo" if customer.is_active else "Inactivo",
             ]
             for column_index, value in enumerate(values):
@@ -311,9 +320,10 @@ class PurchasePage(QWidget):
             self._update_save_enabled()
             return
 
-        missing = max(0, SETTINGS.stickers_per_cycle - customer.current_stickers)
+        target = customer.current_cycle_target
+        missing = max(0, target - customer.current_stickers)
         cycle_state = "En progreso" if customer.current_stickers else "Sin compras en ciclo actual"
-        if customer.current_stickers == SETTINGS.stickers_per_cycle:
+        if customer.current_stickers == target:
             cycle_state = "Ciclo completo"
 
         self.selected_customer_name.setText(customer.full_name)
@@ -323,15 +333,16 @@ class PurchasePage(QWidget):
                     f"Teléfono: {customer.phone or '-'}",
                     f"Correo: {customer.email or '-'}",
                     f"Estado: {'Activo' if customer.is_active else 'Inactivo'}",
-                    f"Stickers: {customer.current_stickers}/{SETTINGS.stickers_per_cycle}",
+                    f"Stickers: {customer.current_stickers}/{target}",
                     f"Ciclo actual: {cycle_state}",
                     f"Faltan {missing} compra(s)",
                     f"Promedio parcial: {format_money(money_from_db(customer.current_cycle_average))}",
                 ]
             )
         )
+        self.cycle_progress.setRange(0, target)
         self.cycle_progress.setValue(customer.current_stickers)
-        self.cycle_progress.setFormat(f"{customer.current_stickers}/{SETTINGS.stickers_per_cycle} stickers")
+        self.cycle_progress.setFormat(f"{customer.current_stickers}/{target} stickers")
         self._update_save_enabled()
 
     def _sync_mode(self) -> None:
@@ -443,22 +454,31 @@ class PurchasePage(QWidget):
             self._update_save_enabled()
 
         message = (
-            f"Compra guardada. Sticker {result.sticker_number}/{SETTINGS.stickers_per_cycle}.\n"
+            "Compra registrada correctamente.\n\n"
+            f"Cliente: {customer.full_name}\n"
+            f"Importe: {format_money(result.total_amount)}\n"
+            f"Sticker: {result.sticker_number} de {result.target_purchase_count}\n"
             f"Faltan {result.missing_count} compra(s)."
         )
         if result.cycle_completed and result.reward_value is not None:
-            message += f"\nCiclo completado. Premio disponible: {format_money(result.reward_value)}."
+            message += f"\nPremio generado: {format_money(result.reward_value)}."
+        message += "\n\nPuede registrar la siguiente compra."
         QMessageBox.information(self, "Compra registrada", message)
-        self._clear_form()
         self._on_saved(result)
+        self.reset_for_next_purchase()
 
-    def _clear_form(self) -> None:
+    def _clear_form(self, clear_customer: bool = False) -> None:
+        if clear_customer:
+            self._selected_customer = None
         self.summary_input.clear()
         self.amount_input.clear()
         self.notes_input.clear()
         self.items_table.setRowCount(0)
         self._add_item_row()
-        self._refresh_selected_customer()
+        if not clear_customer:
+            self._refresh_selected_customer()
+        else:
+            self._update_customer_info()
         self._refresh_customer_table()
         self._recalculate_detail_total()
 
