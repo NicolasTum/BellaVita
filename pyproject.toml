@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "club-compras"
+version = "0.1.0"
+description = "Aplicacion de escritorio para administrar un programa de fidelizacion de tienda de ropa."
+requires-python = ">=3.9"
+readme = "README.md"
+authors = [{ name = "Club de Compras" }]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"

@@ -1,0 +1,8 @@
+PySide6>=6.6,<7
+SQLAlchemy>=2.0,<3
+alembic>=1.13,<2
+passlib[argon2]>=1.7,<2
+openpyxl>=3.1,<4
+reportlab>=4.0,<5
+pytest>=8.0,<9
+pyinstaller>=6.0,<7
