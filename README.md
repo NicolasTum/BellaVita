@@ -70,6 +70,7 @@ Implementado en desarrollo:
 - Pantalla de configuracion clara para compras necesarias por ciclo, con valor visible entre 1 y 50.
 - Datos generales de tienda y correo promocional preparados para integraciones futuras.
 - Filtros y exportacion CSV para campañas de cumpleaños.
+- Pantalla `Cumpleaños del mes` para revisar clientes del mes y exportar CSV.
 - Respaldos manuales y automaticos con SQLite backup API, integridad, limpieza y restauracion segura.
 - Carpeta de respaldo configurable, apta para una carpeta local o sincronizada por Google Drive.
 - Pie de version discreto en el panel principal.
@@ -246,6 +247,8 @@ Para enviar a una computadora de prueba:
 1. Generar el instalador en Windows o con GitHub Actions.
 2. Enviar `dist/installer/BellaVita_ClubDeCompras_Setup_0.1.0.exe`.
 3. La persona de prueba debe seguir [docs/instalacion_windows.md](docs/instalacion_windows.md).
+
+Tambien hay una guia breve para enviar al cliente en [docs/guia_cliente_instalacion.md](docs/guia_cliente_instalacion.md).
 
 ## macOS
 

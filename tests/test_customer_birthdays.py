@@ -15,6 +15,7 @@ from app.database.schema import initialize_database
 from app.services.birthday_promotions import BirthdayPromotionService
 from app.services.customers import CustomerService, CustomerValidationError
 from app.ui.customer_dialog import CustomerDialog
+from app.ui.birthdays_page import BirthdaysPage
 
 
 def _app() -> QApplication:
@@ -186,3 +187,19 @@ def test_customer_dialog_birth_date_is_empty_by_default(tmp_path) -> None:
 
     assert dialog.birth_date_empty_input.isChecked() is True
     assert dialog._birth_date_value() == ""
+
+
+def test_birthdays_page_lists_current_month_customers(tmp_path) -> None:
+    app = _app()
+    db_path = tmp_path / "club.db"
+    initialize_database(db_path)
+    current_month = date.today().month
+    _create_customer(db_path, "Visible", f"1980-{current_month:02d}-10", consent=True)
+    _create_customer(db_path, "Oculto", "1980-01-10" if current_month != 1 else "1980-02-10", consent=True)
+
+    page = BirthdaysPage(BirthdayPromotionService(db_path), lambda: None)
+    page.refresh()
+    app.processEvents()
+
+    assert page.table.rowCount() == 1
+    assert page.table.item(0, 0).text() == "Visible Birthday"

@@ -117,6 +117,7 @@ Fecha de auditoria: 2026-07-12
 | Panel principal | Pie de version | `app/ui/main_window.py` | Mostrar texto discreto no clickeable con version centralizada | Funcional |
 | Panel principal | Acerca de | `app/ui/main_window.py` | No mostrar boton de acerca de | Eliminado |
 | Panel principal | Cumpleaños este mes | `app/repositories/dashboard.py`, `app/ui/main_window.py` | Contar clientes activos con cumpleaños en el mes actual y listar proximos cumpleaños | Funcional |
+| Panel principal | Cumpleaños del mes | `app/ui/main_window.py`, `app/ui/birthdays_page.py` | Abrir listado mensual de clientes con cumpleaños y exportar CSV | Funcional |
 
 ## Estado despues de fecha de nacimiento y promociones
 
@@ -126,6 +127,7 @@ Fecha de auditoria: 2026-07-12
 | Migracion | `app/database/schema.py` | Agregar `birth_date` si falta sin perder clientes existentes | Funcional e idempotente |
 | Ficha de cliente | `app/ui/main_window.py` | Mostrar fecha de nacimiento o `No informada` y mes de cumpleaños | Funcional |
 | Promociones cumpleaños | `app/services/birthday_promotions.py` | Filtrar por hoy, semana, mes, proximo mes, rango y consentimiento | Funcional |
+| Listado cumpleaños | `app/ui/birthdays_page.py` | Mostrar clientes del mes, filtrar por consentimiento y exportar CSV | Funcional |
 | Exportacion campañas | `app/services/birthday_promotions.py` | Exportar CSV mensual con fecha, dia, mes y datos de contacto | Funcional |
 
 ## Estado despues de respaldos y restauracion
@@ -248,6 +250,7 @@ Flujo probado:
 28. Ficha de cliente muestra fecha o `No informada` y mes de cumpleaños.
 29. Servicio de promociones filtra cumpleaños por dia, semana, mes y consentimiento.
 30. Exportacion CSV de cumpleaños incluye fecha y mes.
+31. `Cumpleaños del mes` muestra una lista completa y exportable desde el panel principal.
 
 Flujo manual controlado de Fase 3/4:
 

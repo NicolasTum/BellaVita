@@ -29,12 +29,14 @@ from app.repositories.dashboard import DashboardRepository
 from app.repositories.history import CustomerHistoryRepository
 from app.repositories.loyalty import LoyaltyRepository
 from app.services.backups import BackupError, BackupService
+from app.services.birthday_promotions import BirthdayPromotionService
 from app.services.customers import CustomerService
 from app.services.purchases import PurchaseService
 from app.services.rewards import RewardService
 from app.services.settings import SettingsService
 from app.ui.branding import app_icon, logo_label
 from app.ui.backups_page import BackupsPage
+from app.ui.birthdays_page import BirthdaysPage
 from app.ui.customer_history_page import CustomerHistoryPage
 from app.ui.customer_dialog import CustomerDialog
 from app.ui.loyalty_card_page import LoyaltyCardPage
@@ -62,6 +64,7 @@ class MainWindow(QMainWindow):
         self._purchase_service = PurchaseService(database_path(), self._settings_service)
         self._reward_service = RewardService(database_path())
         self._backup_service = BackupService(database_path())
+        self._birthday_service = BirthdayPromotionService(database_path())
         self._loyalty_repository = LoyaltyRepository(database_path())
         self._history_repository = CustomerHistoryRepository(database_path())
         self._dashboard_repository = DashboardRepository(database_path())
@@ -110,6 +113,10 @@ class MainWindow(QMainWindow):
             self._backup_service,
             self._show_home,
         )
+        self.birthdays_page = BirthdaysPage(
+            self._birthday_service,
+            self._show_home,
+        )
         self.placeholder_page = self._build_placeholder_page()
 
         self.stack.addWidget(self.home_page)
@@ -121,6 +128,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.customer_history_page)
         self.stack.addWidget(self.settings_page)
         self.stack.addWidget(self.backups_page)
+        self.stack.addWidget(self.birthdays_page)
         self.stack.addWidget(self.placeholder_page)
 
         root = QWidget()
@@ -152,6 +160,7 @@ class MainWindow(QMainWindow):
             ("Nuevo cliente", self._open_new_customer),
             ("Registrar compra", self._show_purchase_page),
             ("Premios disponibles", self._show_rewards_page),
+            ("Cumpleaños del mes", self._show_birthdays_page),
             ("Crear copia de seguridad", self._show_backups_page),
         ]
         if self._settings_service.can_open_settings():
@@ -473,6 +482,10 @@ class MainWindow(QMainWindow):
     def _show_backups_page(self) -> None:
         self.backups_page.refresh()
         self.stack.setCurrentWidget(self.backups_page)
+
+    def _show_birthdays_page(self) -> None:
+        self.birthdays_page.refresh()
+        self.stack.setCurrentWidget(self.birthdays_page)
 
     def _show_settings_page(self) -> None:
         if not self._settings_service.can_open_settings():
