@@ -193,8 +193,13 @@ def test_dashboard_birthday_summary_does_not_show_personal_data(tmp_path, monkey
     window = MainWindow()
     app.processEvents()
 
-    visible_text = f"{window.dashboard_label.text()}\n{window.birthdays_label.text()}".lower()
+    visible_text = (
+        f"{window.dashboard_label.text()}\n"
+        f"{window.birthdays_count_label.text()}\n"
+        f"{window.birthdays_hint_label.text()}"
+    ).lower()
     assert "cumpleaños este mes: 1" in visible_text
+    assert "cumpleaños este mes" not in window.dashboard_label.text().lower()
     assert "privado" not in visible_text
     assert "099privado" not in visible_text
     assert "consentimiento" not in visible_text

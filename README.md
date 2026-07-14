@@ -69,8 +69,9 @@ Implementado en desarrollo:
 - Cantidad objetivo de compras por ciclo configurable; cada ciclo conserva su propio objetivo.
 - Pantalla de configuracion clara para compras necesarias por ciclo, con valor visible entre 1 y 50.
 - Datos generales de tienda y correo promocional preparados para integraciones futuras.
-- Resumen simple de cumpleaños del mes en el panel principal, sin datos personales visibles.
+- Tarjeta clickeable de cumpleaños del mes en el panel principal, sin datos personales visibles ni accesos duplicados.
 - Pantalla `Cumpleaños` para revisar clientes del mes, buscar, ver contactos, premios disponibles y exportar CSV.
+- Acceso compacto a `Configuracion` en el encabezado del panel principal, visible solo para administradores.
 - Respaldos manuales y automaticos con SQLite backup API, integridad, limpieza y restauracion segura.
 - Carpeta de respaldo configurable, apta para una carpeta local o sincronizada por Google Drive.
 - Pie de version discreto en el panel principal.
@@ -178,7 +179,7 @@ Los clientes pueden tener una fecha de nacimiento opcional. El formulario permit
 
 Para cargar una fecha de nacimiento el cliente debe aceptar `Acepta recibir promociones`. Si se retira ese consentimiento, la aplicacion pregunta si debe eliminar tambien la fecha guardada.
 
-El panel principal solo muestra la cantidad de cumpleaños del mes y un acceso a la seccion dedicada. No muestra nombres, telefonos, correos ni estados de consentimiento.
+El panel principal solo muestra la cantidad de cumpleaños del mes en una tarjeta clickeable que abre la seccion dedicada. No muestra nombres, telefonos, correos ni estados de consentimiento.
 
 El servicio `app.services.birthday_promotions.BirthdayPromotionService` permite filtrar:
 

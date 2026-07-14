@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import sys
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QCloseEvent
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QCloseEvent, QIcon, QKeyEvent, QMouseEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
@@ -33,7 +33,7 @@ from app.services.birthday_promotions import BirthdayPromotionService
 from app.services.customers import CustomerService
 from app.services.purchases import PurchaseService
 from app.services.rewards import RewardService
-from app.services.settings import SettingsService
+from app.services.settings import CurrentUser, SettingsService
 from app.ui.branding import app_icon, logo_label
 from app.ui.backups_page import BackupsPage
 from app.ui.birthdays_page import BirthdaysPage
@@ -56,11 +56,35 @@ def _font_family() -> str:
     return "Arial, sans-serif"
 
 
+class ClickableBirthdayCard(QFrame):
+    activated = Signal()
+
+    def __init__(self, parent=None) -> None:
+        super().__init__(parent)
+        self.setObjectName("BirthdayCard")
+        self.setCursor(Qt.PointingHandCursor)
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setToolTip("Ver detalle de cumpleaños")
+        self.setAccessibleName("Ver detalle de cumpleaños")
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.LeftButton and self.rect().contains(event.position().toPoint()):
+            self.activated.emit()
+        super().mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
+            self.activated.emit()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+
 class MainWindow(QMainWindow):
-    def __init__(self) -> None:
+    def __init__(self, current_user: CurrentUser | None = None) -> None:
         super().__init__()
         self._customer_service = CustomerService(database_path())
-        self._settings_service = SettingsService(database_path())
+        self._settings_service = SettingsService(database_path(), current_user) if current_user else SettingsService(database_path())
         self._purchase_service = PurchaseService(database_path(), self._settings_service)
         self._reward_service = RewardService(database_path())
         self._backup_service = BackupService(database_path())
@@ -155,22 +179,15 @@ class MainWindow(QMainWindow):
         self.dashboard_label.setObjectName("DetailInfo")
         self.dashboard_label.setAlignment(Qt.AlignCenter)
         self.dashboard_label.setWordWrap(True)
-        self.birthdays_label = QLabel()
-        self.birthdays_label.setObjectName("DetailInfo")
-        self.birthdays_label.setWordWrap(True)
-        self.view_birthdays_button = QPushButton("Ver cumpleaños")
-        self.view_birthdays_button.clicked.connect(self._show_birthdays_page)
+        self.birthdays_card = self._build_birthday_card()
 
         buttons = [
             ("Buscar cliente", self._show_customer_search),
             ("Nuevo cliente", self._open_new_customer),
             ("Registrar compra", self._show_purchase_page),
             ("Premios disponibles", self._show_rewards_page),
-            ("Cumpleaños", self._show_birthdays_page),
             ("Crear copia de seguridad", self._show_backups_page),
         ]
-        if self._settings_service.can_open_settings():
-            buttons.append(("Configuración", self._show_settings_page))
 
         grid = QGridLayout()
         grid.setSpacing(14)
@@ -178,7 +195,10 @@ class MainWindow(QMainWindow):
             button = QPushButton(label)
             button.setMinimumHeight(52)
             button.clicked.connect(slot)
-            grid.addWidget(button, index // 2, index % 2)
+            if index == 4:
+                grid.addWidget(button, 2, 0, 1, 2)
+            else:
+                grid.addWidget(button, index // 2, index % 2)
 
         footer = QLabel(f"Bella Vita · Club de Compras · Versión {SETTINGS.version}\nUso interno")
         footer.setObjectName("FooterText")
@@ -187,13 +207,36 @@ class MainWindow(QMainWindow):
         layout.addWidget(brand_header)
         layout.addSpacing(12)
         layout.addWidget(self.dashboard_label)
-        layout.addWidget(self.birthdays_label)
-        layout.addWidget(self.view_birthdays_button)
+        layout.addWidget(self.birthdays_card)
         layout.addSpacing(20)
         layout.addLayout(grid)
         layout.addStretch(2)
         layout.addWidget(footer)
         return page
+
+    def _build_birthday_card(self) -> ClickableBirthdayCard:
+        card = ClickableBirthdayCard()
+        card.activated.connect(self._show_birthdays_page)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setSpacing(8)
+
+        top_row = QHBoxLayout()
+        self.birthdays_count_label = QLabel()
+        self.birthdays_count_label.setObjectName("BirthdayCardTitle")
+        self.birthdays_action_label = QLabel("Ver detalle ›")
+        self.birthdays_action_label.setObjectName("BirthdayCardAction")
+        self.birthdays_action_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        top_row.addWidget(self.birthdays_count_label, 1)
+        top_row.addWidget(self.birthdays_action_label)
+
+        self.birthdays_hint_label = QLabel()
+        self.birthdays_hint_label.setObjectName("BirthdayCardHint")
+        self.birthdays_hint_label.setWordWrap(True)
+
+        layout.addLayout(top_row)
+        layout.addWidget(self.birthdays_hint_label)
+        return card
 
     def _brand_header(self) -> QWidget:
         container = QWidget()
@@ -224,6 +267,23 @@ class MainWindow(QMainWindow):
         layout.addWidget(logo_card)
         layout.addLayout(text_layout)
         layout.addStretch(1)
+        user = self._settings_service.current_user()
+        role_label = QLabel("Admin" if user.is_admin else "Vendedor")
+        role_label.setObjectName("HeaderRole")
+        layout.addWidget(role_label)
+        if self._settings_service.can_open_settings():
+            self.settings_header_button = QPushButton()
+            self.settings_header_button.setObjectName("SettingsHeaderButton")
+            self.settings_header_button.setIcon(QIcon(resource_path("assets", "icons", "gear.svg").as_posix()))
+            self.settings_header_button.setIconSize(QSize(22, 22))
+            self.settings_header_button.setFixedSize(42, 42)
+            self.settings_header_button.setToolTip("Configuración")
+            self.settings_header_button.setAccessibleName("Configuración")
+            self.settings_header_button.setCursor(Qt.PointingHandCursor)
+            self.settings_header_button.clicked.connect(self._show_settings_page)
+            layout.addWidget(self.settings_header_button)
+        else:
+            self.settings_header_button = None
         return container
 
     def _build_customer_search_page(self) -> QWidget:
@@ -365,20 +425,15 @@ class MainWindow(QMainWindow):
                     f"Valor total de premios disponibles: {format_money(stats.rewards_available_value)}",
                     f"Premios utilizados: {stats.rewards_used}",
                     f"Ciclos a 1 compra: {stats.cycles_near_completion}",
-                    f"Cumpleaños este mes: {stats.birthdays_this_month}",
                 ]
             )
         )
         if stats.birthdays_this_month:
-            self.birthdays_label.setText(
-                f"Cumpleaños este mes: {stats.birthdays_this_month}\n"
-                "Hay clientes con cumpleaños para contactar este mes."
-            )
+            self.birthdays_count_label.setText(f"Cumpleaños este mes: {stats.birthdays_this_month}")
+            self.birthdays_hint_label.setText("Hay clientes para contactar este mes.")
         else:
-            self.birthdays_label.setText(
-                "Cumpleaños este mes: 0\n"
-                "No hay cumpleaños registrados para este mes."
-            )
+            self.birthdays_count_label.setText("Cumpleaños este mes: 0")
+            self.birthdays_hint_label.setText("No hay cumpleaños registrados este mes.")
 
     def _show_customer_search(self) -> None:
         self._refresh_customer_table()
@@ -636,6 +691,12 @@ class MainWindow(QMainWindow):
                 font-size: 22px;
                 font-weight: 600;
             }
+            QLabel#HeaderRole {
+                color: #214f52;
+                font-size: 14px;
+                font-weight: 700;
+                padding: 6px 10px;
+            }
             QLabel#SectionTitle {
                 font-size: 26px;
                 font-weight: 700;
@@ -650,6 +711,32 @@ class MainWindow(QMainWindow):
                 border-radius: 8px;
                 padding: 18px;
                 line-height: 1.45;
+            }
+            QFrame#BirthdayCard {
+                background: #ffffff;
+                border: 1px solid #ded8ce;
+                border-radius: 8px;
+            }
+            QFrame#BirthdayCard:hover {
+                background: #fbfaf7;
+                border: 1px solid #b9afa3;
+            }
+            QFrame#BirthdayCard:focus {
+                border: 2px solid #2f6f73;
+            }
+            QLabel#BirthdayCardTitle {
+                color: #252525;
+                font-size: 17px;
+                font-weight: 700;
+            }
+            QLabel#BirthdayCardAction {
+                color: #2f6f73;
+                font-size: 14px;
+                font-weight: 700;
+            }
+            QLabel#BirthdayCardHint {
+                color: #67615a;
+                font-size: 14px;
             }
             QFrame#SidePanel, QFrame#InfoCard {
                 background: #ffffff;
@@ -763,6 +850,22 @@ class MainWindow(QMainWindow):
             }
             QPushButton:pressed {
                 background: #214f52;
+            }
+            QPushButton#SettingsHeaderButton {
+                background: #ffffff;
+                border: 1px solid #ded8ce;
+                border-radius: 8px;
+                padding: 0;
+            }
+            QPushButton#SettingsHeaderButton:hover {
+                background: #fbfaf7;
+                border: 1px solid #b9afa3;
+            }
+            QPushButton#SettingsHeaderButton:pressed {
+                background: #e8e1d7;
+            }
+            QPushButton#SettingsHeaderButton:focus {
+                border: 2px solid #2f6f73;
             }
             QPushButton:disabled {
                 background: #9aa4a5;

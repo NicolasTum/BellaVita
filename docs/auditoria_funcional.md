@@ -108,7 +108,7 @@ Fecha de auditoria: 2026-07-12
 | Registrar compra | Guardar compra | `app/ui/purchase_page.py`, `app/services/purchases.py` | Guardar, mostrar resumen, limpiar formulario y quedar listo para otra compra | Funcional |
 | Registrar compra | Buscador de clientes | `app/ui/purchase_page.py` | Recibir foco despues de guardar | Funcional |
 | Registrar compra | Cliente seleccionado | `app/ui/purchase_page.py` | Deseleccionarse despues de guardar | Funcional |
-| Panel principal | Configuracion | `app/ui/main_window.py`, `app/ui/settings_page.py` | Abrir configuracion solo para admin | Funcional |
+| Panel principal | Configuracion | `app/ui/main_window.py`, `app/ui/settings_page.py` | Abrir configuracion desde engranaje compacto del encabezado, visible solo para admin | Funcional |
 | Configuracion | Promocion | `app/ui/settings_page.py`, `app/services/settings.py` | Cambiar objetivo de compras, nombre, descripcion y estado | Funcional |
 | Configuracion | Compras necesarias para obtener el premio | `app/ui/settings_page.py` | Mostrar valor claro entre 1 y 50, ayuda contextual y configuracion actual | Funcional |
 | Configuracion | Correo promociones | `app/ui/settings_page.py`, `app/services/settings.py` | Guardar datos para futura integracion sin contrasenas | Funcional |
@@ -116,8 +116,8 @@ Fecha de auditoria: 2026-07-12
 | Configuracion | Guardar cambios | `app/services/settings.py` | Validar, persistir en `app_settings` y auditar | Funcional |
 | Panel principal | Pie de version | `app/ui/main_window.py` | Mostrar texto discreto no clickeable con version centralizada | Funcional |
 | Panel principal | Acerca de | `app/ui/main_window.py` | No mostrar boton de acerca de | Eliminado |
-| Panel principal | Cumpleaños este mes | `app/repositories/dashboard.py`, `app/ui/main_window.py` | Contar clientes activos con cumpleaños y consentimiento en el mes actual, sin mostrar datos personales | Funcional |
-| Panel principal | Cumpleaños | `app/ui/main_window.py`, `app/ui/birthdays_page.py` | Abrir listado mensual de clientes con cumpleaños, busqueda, acciones y exportacion CSV | Funcional |
+| Panel principal | Cumpleaños este mes | `app/repositories/dashboard.py`, `app/ui/main_window.py` | Mostrar tarjeta clickeable con cantidad de clientes activos con cumpleaños y consentimiento, sin datos personales ni contador duplicado | Funcional |
+| Panel principal | Cumpleaños | `app/ui/main_window.py`, `app/ui/birthdays_page.py` | Abrir listado mensual desde la tarjeta unica, con busqueda, acciones y exportacion CSV | Funcional |
 
 ## Estado despues de fecha de nacimiento y promociones
 
@@ -245,6 +245,8 @@ Flujo probado:
 23. Crear copia genera un archivo `club_compras_YYYY-MM-DD_HHMMSS.db`.
 24. Restaurar copia valida integridad y crea copia previa.
 25. El panel principal ya no muestra boton `Acerca de`; muestra pie de version discreto.
+25.1. Configuracion se abre desde un engranaje compacto del encabezado y no ocupa una tarjeta grande.
+25.2. El panel principal tiene un unico acceso a cumpleaños mediante tarjeta clickeable.
 26. Nuevo cliente permite guardar sin fecha de nacimiento.
 27. Editar cliente permite agregar y limpiar fecha de nacimiento.
 28. Ficha de cliente muestra fecha o `No informada` y mes de cumpleaños.

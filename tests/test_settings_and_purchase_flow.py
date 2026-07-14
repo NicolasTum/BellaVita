@@ -7,6 +7,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import sqlite3
 
 import pytest
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton
 
 from app.database.schema import initialize_database
@@ -106,12 +108,96 @@ def test_main_window_replaces_about_button_with_footer_label(tmp_path, monkeypat
     footer = window.findChild(QLabel, "FooterText")
 
     assert "Acerca de" not in button_texts
-    assert "Cumpleaños" in button_texts
+    assert "Ver cumpleaños" not in button_texts
+    assert "Cumpleaños" not in button_texts
+    assert "Configuración" not in button_texts
     assert footer is not None
     assert f"Bella Vita · Club de Compras · Versión {VERSION}" in footer.text()
     assert "QCheckBox::indicator" in window._stylesheet()
     assert "border: 2px solid #4f5d5d" in window._stylesheet()
     assert "background: #2f6f73" in window._stylesheet()
+
+
+def test_dashboard_birthday_card_is_only_birthday_access_and_opens_page(tmp_path, monkeypatch) -> None:
+    app = _app()
+    db_path = tmp_path / "club.db"
+    initialize_database(db_path)
+    monkeypatch.setattr("app.ui.main_window.database_path", lambda: db_path)
+
+    window = MainWindow()
+    window.show()
+    app.processEvents()
+
+    button_texts = [button.text() for button in window.home_page.findChildren(QPushButton)]
+    assert "Ver cumpleaños" not in button_texts
+    assert "Cumpleaños" not in button_texts
+    assert window.dashboard_label.text().count("Cumpleaños este mes") == 0
+    assert window.birthdays_count_label.text().startswith("Cumpleaños este mes:")
+    assert window.birthdays_card.focusPolicy() == Qt.StrongFocus
+    assert window.birthdays_card.toolTip() == "Ver detalle de cumpleaños"
+
+    QTest.mouseClick(window.birthdays_card, Qt.LeftButton)
+    app.processEvents()
+    assert window.stack.currentWidget() is window.birthdays_page
+
+    window._show_home()
+    window.birthdays_card.setFocus()
+    QTest.keyClick(window.birthdays_card, Qt.Key_Return)
+    app.processEvents()
+    assert window.stack.currentWidget() is window.birthdays_page
+
+    window._show_home()
+    window.birthdays_card.setFocus()
+    QTest.keyClick(window.birthdays_card, Qt.Key_Space)
+    app.processEvents()
+    assert window.stack.currentWidget() is window.birthdays_page
+
+
+def test_dashboard_settings_header_button_depends_on_role(tmp_path, monkeypatch) -> None:
+    app = _app()
+    db_path = tmp_path / "club.db"
+    initialize_database(db_path)
+    monkeypatch.setattr("app.ui.main_window.database_path", lambda: db_path)
+
+    admin_window = MainWindow(CurrentUser(1, "admin", "admin"))
+    admin_window.show()
+    app.processEvents()
+
+    assert admin_window.settings_header_button is not None
+    assert admin_window.settings_header_button.toolTip() == "Configuración"
+    assert admin_window.settings_header_button.text() == ""
+    assert admin_window.settings_header_button.width() == 42
+    assert "Configuración" not in [button.text() for button in admin_window.home_page.findChildren(QPushButton)]
+
+    QTest.mouseClick(admin_window.settings_header_button, Qt.LeftButton)
+    app.processEvents()
+    assert admin_window.stack.currentWidget() is admin_window.settings_page
+
+    seller_window = MainWindow(CurrentUser(2, "seller", "seller"))
+    seller_window.show()
+    app.processEvents()
+
+    assert seller_window.settings_header_button is None
+    assert "Configuración" not in [button.text() for button in seller_window.home_page.findChildren(QPushButton)]
+
+
+def test_dashboard_action_grid_uses_balanced_layout(tmp_path, monkeypatch) -> None:
+    app = _app()
+    db_path = tmp_path / "club.db"
+    initialize_database(db_path)
+    monkeypatch.setattr("app.ui.main_window.database_path", lambda: db_path)
+
+    window = MainWindow()
+    app.processEvents()
+
+    button_texts = [button.text() for button in window.home_page.findChildren(QPushButton) if button.text()]
+    assert button_texts == [
+        "Buscar cliente",
+        "Nuevo cliente",
+        "Registrar compra",
+        "Premios disponibles",
+        "Crear copia de seguridad",
+    ]
 
 
 def test_existing_cycle_keeps_target_after_setting_change(tmp_path) -> None:
