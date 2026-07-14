@@ -3,13 +3,15 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QCheckBox,
     QComboBox,
     QFileDialog,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMessageBox,
     QPushButton,
     QTableWidget,
@@ -18,16 +20,30 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.services.birthday_promotions import BirthdayPromotionService
-from app.utils.dates import MONTH_NAMES
+from app.services.birthday_promotions import BirthdayPromotionCustomer, BirthdayPromotionService
+from app.utils.dates import MONTH_NAMES, format_birth_date
 from app.utils.paths import export_dir
 
 
 class BirthdaysPage(QWidget):
-    def __init__(self, birthday_service: BirthdayPromotionService, on_back, parent=None) -> None:
+    def __init__(
+        self,
+        birthday_service: BirthdayPromotionService,
+        on_back,
+        on_open_customer,
+        on_edit_customer,
+        on_show_history,
+        on_show_rewards,
+        parent=None,
+    ) -> None:
         super().__init__(parent)
         self._birthday_service = birthday_service
         self._on_back = on_back
+        self._on_open_customer = on_open_customer
+        self._on_edit_customer = on_edit_customer
+        self._on_show_history = on_show_history
+        self._on_show_rewards = on_show_rewards
+        self._current_customers: list[BirthdayPromotionCustomer] = []
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -37,12 +53,12 @@ class BirthdaysPage(QWidget):
 
         header = QHBoxLayout()
         title_box = QVBoxLayout()
-        title = QLabel("Cumpleaños del mes")
+        title = QLabel("Cumpleaños")
         title.setObjectName("SectionTitle")
-        subtitle = QLabel("Clientes activos con fecha de nacimiento cargada para campañas del mes.")
-        subtitle.setObjectName("Subtitle")
+        self.subtitle = QLabel()
+        self.subtitle.setObjectName("Subtitle")
         title_box.addWidget(title)
-        title_box.addWidget(subtitle)
+        title_box.addWidget(self.subtitle)
         back_button = QPushButton("Volver")
         back_button.clicked.connect(self._on_back)
         header.addLayout(title_box, 1)
@@ -54,15 +70,26 @@ class BirthdaysPage(QWidget):
             self.month_input.addItem(name, month)
         self.month_input.setCurrentIndex(date.today().month - 1)
         self.month_input.currentIndexChanged.connect(self.refresh)
-        self.consent_input = QCheckBox("Solo clientes con consentimiento promocional")
-        self.consent_input.stateChanged.connect(self.refresh)
-        export_button = QPushButton("Exportar CSV")
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Buscar por nombre, apellido, teléfono o correo")
+        self.search_input.textChanged.connect(self.refresh)
+        export_button = QPushButton("Exportar cumpleaños del mes")
         export_button.clicked.connect(self._export)
         filters.addWidget(QLabel("Mes"))
         filters.addWidget(self.month_input)
-        filters.addWidget(self.consent_input)
-        filters.addStretch(1)
+        filters.addWidget(self.search_input, 1)
         filters.addWidget(export_button)
+
+        cards = QGridLayout()
+        cards.setSpacing(10)
+        self.total_card = self._metric_label()
+        self.phone_card = self._metric_label()
+        self.email_card = self._metric_label()
+        self.reward_card = self._metric_label()
+        cards.addWidget(self.total_card, 0, 0)
+        cards.addWidget(self.phone_card, 0, 1)
+        cards.addWidget(self.email_card, 0, 2)
+        cards.addWidget(self.reward_card, 0, 3)
 
         self.summary_label = QLabel()
         self.summary_label.setObjectName("DetailInfo")
@@ -71,46 +98,106 @@ class BirthdaysPage(QWidget):
         self.table.setHorizontalHeaderLabels(
             [
                 "Cliente",
-                "Cumpleaños",
+                "Día del cumpleaños",
+                "Fecha de nacimiento",
                 "Teléfono",
                 "Correo",
-                "Consentimiento",
                 "Última compra",
-                "Premios",
+                "Premios disponibles",
             ]
         )
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.doubleClicked.connect(self._open_selected_customer)
+
+        actions = QHBoxLayout()
+        open_button = QPushButton("Abrir ficha")
+        open_button.clicked.connect(self._open_selected_customer)
+        edit_button = QPushButton("Editar cliente")
+        edit_button.clicked.connect(self._edit_selected_customer)
+        history_button = QPushButton("Ver historial")
+        history_button.clicked.connect(self._history_selected_customer)
+        rewards_button = QPushButton("Ver premios disponibles")
+        rewards_button.clicked.connect(self._rewards_selected_customer)
+        actions.addWidget(open_button)
+        actions.addWidget(edit_button)
+        actions.addWidget(history_button)
+        actions.addWidget(rewards_button)
+        actions.addStretch(1)
 
         layout.addLayout(header)
         layout.addLayout(filters)
+        layout.addLayout(cards)
         layout.addWidget(self.summary_label)
         layout.addWidget(self.table, 1)
+        layout.addLayout(actions)
 
     def refresh(self) -> None:
         month = self.month_input.currentData()
-        require_consent = self.consent_input.isChecked()
-        customers = self._birthday_service.customers_for_month(
+        month_name = MONTH_NAMES[month].lower()
+        self._current_customers = self._birthday_service.list_birthdays_for_month(
             month,
-            require_marketing_consent=require_consent,
-            require_contact=require_consent,
+            search_text=self.search_input.text() if hasattr(self, "search_input") else "",
         )
-        self.summary_label.setText(
-            f"{len(customers)} cliente(s) activos con cumpleaños en {MONTH_NAMES[month]}."
-        )
-        self.table.setRowCount(len(customers))
-        for row, customer in enumerate(customers):
+        count = len(self._current_customers)
+        self.subtitle.setText(f"Cumpleaños de {month_name}")
+        if count:
+            self.summary_label.setText(f"{count} cliente(s) cumplen años en {month_name}.")
+        else:
+            self.summary_label.setText(f"No hay clientes con cumpleaños registrados en {month_name}.")
+
+        with_phone = sum(1 for customer in self._current_customers if customer.phone)
+        with_email = sum(1 for customer in self._current_customers if customer.email)
+        with_rewards = sum(1 for customer in self._current_customers if customer.available_rewards > 0)
+        self.total_card.setText(f"Cumpleaños del mes\n{count}")
+        self.phone_card.setText(f"Con teléfono\n{with_phone}")
+        self.email_card.setText(f"Con correo\n{with_email}")
+        self.reward_card.setText(f"Con premio disponible\n{with_rewards}")
+
+        self.table.setRowCount(count)
+        for row, customer in enumerate(self._current_customers):
             values = [
                 f"{customer.first_name} {customer.last_name}",
-                f"{customer.birthday_day:02d}/{customer.birthday_month:02d}",
+                f"{customer.birthday_day:02d} de {customer.birthday_month_name.lower()}",
+                format_birth_date(customer.birth_date),
                 customer.phone or "",
                 customer.email or "",
-                "Si" if customer.marketing_consent else "No",
                 customer.last_purchase_at or "",
                 str(customer.available_rewards),
             ]
             for column, value in enumerate(values):
-                self.table.setItem(row, column, QTableWidgetItem(value))
+                item = QTableWidgetItem(value)
+                if column == 0:
+                    item.setData(Qt.UserRole, customer.id)
+                self.table.setItem(row, column, item)
+
+    def _selected_customer_id(self) -> int | None:
+        selected = self.table.selectedItems()
+        if not selected:
+            QMessageBox.information(self, "Seleccionar cliente", "Seleccioná un cliente de la lista.")
+            return None
+        return int(self.table.item(selected[0].row(), 0).data(Qt.UserRole))
+
+    def _open_selected_customer(self) -> None:
+        customer_id = self._selected_customer_id()
+        if customer_id is not None:
+            self._on_open_customer(customer_id)
+
+    def _edit_selected_customer(self) -> None:
+        customer_id = self._selected_customer_id()
+        if customer_id is not None:
+            self._on_edit_customer(customer_id)
+
+    def _history_selected_customer(self) -> None:
+        customer_id = self._selected_customer_id()
+        if customer_id is not None:
+            self._on_show_history(customer_id)
+
+    def _rewards_selected_customer(self) -> None:
+        customer_id = self._selected_customer_id()
+        if customer_id is not None:
+            self._on_show_rewards(customer_id)
 
     def _export(self) -> None:
         month = self.month_input.currentData()
@@ -123,9 +210,16 @@ class BirthdaysPage(QWidget):
         )
         if not file_name:
             return
-        path = self._birthday_service.export_month(
+        path = self._birthday_service.export_birthdays_for_month(
             month,
             destination=Path(file_name),
-            require_marketing_consent=self.consent_input.isChecked(),
+            search_text=self.search_input.text(),
         )
         QMessageBox.information(self, "Exportación creada", f"Archivo generado:\n{path}")
+
+    @staticmethod
+    def _metric_label() -> QLabel:
+        label = QLabel()
+        label.setObjectName("DetailInfo")
+        label.setAlignment(Qt.AlignCenter)
+        return label

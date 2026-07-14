@@ -116,6 +116,10 @@ class MainWindow(QMainWindow):
         self.birthdays_page = BirthdaysPage(
             self._birthday_service,
             self._show_home,
+            self._show_customer_detail,
+            self._edit_customer_by_id,
+            self._show_history_for_customer,
+            self._show_rewards_for_customer_id,
         )
         self.placeholder_page = self._build_placeholder_page()
 
@@ -154,13 +158,15 @@ class MainWindow(QMainWindow):
         self.birthdays_label = QLabel()
         self.birthdays_label.setObjectName("DetailInfo")
         self.birthdays_label.setWordWrap(True)
+        self.view_birthdays_button = QPushButton("Ver cumpleaños")
+        self.view_birthdays_button.clicked.connect(self._show_birthdays_page)
 
         buttons = [
             ("Buscar cliente", self._show_customer_search),
             ("Nuevo cliente", self._open_new_customer),
             ("Registrar compra", self._show_purchase_page),
             ("Premios disponibles", self._show_rewards_page),
-            ("Cumpleaños del mes", self._show_birthdays_page),
+            ("Cumpleaños", self._show_birthdays_page),
             ("Crear copia de seguridad", self._show_backups_page),
         ]
         if self._settings_service.can_open_settings():
@@ -182,6 +188,7 @@ class MainWindow(QMainWindow):
         layout.addSpacing(12)
         layout.addWidget(self.dashboard_label)
         layout.addWidget(self.birthdays_label)
+        layout.addWidget(self.view_birthdays_button)
         layout.addSpacing(20)
         layout.addLayout(grid)
         layout.addStretch(2)
@@ -362,15 +369,16 @@ class MainWindow(QMainWindow):
                 ]
             )
         )
-        if stats.upcoming_birthdays:
-            lines = ["Próximos cumpleaños:"]
-            for name, day_month, phone, email, consent in stats.upcoming_birthdays:
-                contact = phone or email or "-"
-                consent_text = "con consentimiento" if consent else "sin consentimiento"
-                lines.append(f"{name} · {day_month} · {contact} · {consent_text}")
-            self.birthdays_label.setText("\n".join(lines))
+        if stats.birthdays_this_month:
+            self.birthdays_label.setText(
+                f"Cumpleaños este mes: {stats.birthdays_this_month}\n"
+                "Hay clientes con cumpleaños para contactar este mes."
+            )
         else:
-            self.birthdays_label.setText("Próximos cumpleaños: sin fechas cargadas.")
+            self.birthdays_label.setText(
+                "Cumpleaños este mes: 0\n"
+                "No hay cumpleaños registrados para este mes."
+            )
 
     def _show_customer_search(self) -> None:
         self._refresh_customer_table()
@@ -502,7 +510,11 @@ class MainWindow(QMainWindow):
     def _show_rewards_for_current_customer(self) -> None:
         if self._selected_customer_id is None:
             return
-        customer = self._customer_service.get_customer(self._selected_customer_id)
+        self._show_rewards_for_customer_id(self._selected_customer_id)
+
+    def _show_rewards_for_customer_id(self, customer_id: int) -> None:
+        self._selected_customer_id = customer_id
+        customer = self._customer_service.get_customer(customer_id)
         self.rewards_page.search_input.setText(customer.full_name if customer else "")
         self.rewards_page.status_input.setCurrentIndex(1)
         self.rewards_page.refresh()
@@ -512,7 +524,11 @@ class MainWindow(QMainWindow):
         if self._selected_customer_id is None:
             QMessageBox.information(self, "Seleccionar cliente", "Abrí primero la ficha de un cliente.")
             return
-        self.customer_history_page.show_customer(self._selected_customer_id)
+        self._show_history_for_customer(self._selected_customer_id)
+
+    def _show_history_for_customer(self, customer_id: int) -> None:
+        self._selected_customer_id = customer_id
+        self.customer_history_page.show_customer(customer_id)
         self.stack.setCurrentWidget(self.customer_history_page)
 
     def _after_reward_changed(self, customer_id: int) -> None:
@@ -531,7 +547,10 @@ class MainWindow(QMainWindow):
     def _edit_current_customer(self) -> None:
         if self._selected_customer_id is None:
             return
-        customer = self._customer_service.get_customer(self._selected_customer_id)
+        self._edit_customer_by_id(self._selected_customer_id)
+
+    def _edit_customer_by_id(self, customer_id: int) -> None:
+        customer = self._customer_service.get_customer(customer_id)
         if not customer:
             QMessageBox.warning(self, "Cliente no encontrado", "No se pudo editar el cliente.")
             return

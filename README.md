@@ -69,8 +69,8 @@ Implementado en desarrollo:
 - Cantidad objetivo de compras por ciclo configurable; cada ciclo conserva su propio objetivo.
 - Pantalla de configuracion clara para compras necesarias por ciclo, con valor visible entre 1 y 50.
 - Datos generales de tienda y correo promocional preparados para integraciones futuras.
-- Filtros y exportacion CSV para campañas de cumpleaños.
-- Pantalla `Cumpleaños del mes` para revisar clientes del mes y exportar CSV.
+- Resumen simple de cumpleaños del mes en el panel principal, sin datos personales visibles.
+- Pantalla `Cumpleaños` para revisar clientes del mes, buscar, ver contactos, premios disponibles y exportar CSV.
 - Respaldos manuales y automaticos con SQLite backup API, integridad, limpieza y restauracion segura.
 - Carpeta de respaldo configurable, apta para una carpeta local o sincronizada por Google Drive.
 - Pie de version discreto en el panel principal.
@@ -176,6 +176,10 @@ La restauracion verifica el archivo elegido y crea antes una copia de seguridad 
 
 Los clientes pueden tener una fecha de nacimiento opcional. El formulario permite dejarla sin informar, cargarla con calendario o limpiarla. No se guarda la fecha actual por defecto.
 
+Para cargar una fecha de nacimiento el cliente debe aceptar `Acepta recibir promociones`. Si se retira ese consentimiento, la aplicacion pregunta si debe eliminar tambien la fecha guardada.
+
+El panel principal solo muestra la cantidad de cumpleaños del mes y un acceso a la seccion dedicada. No muestra nombres, telefonos, correos ni estados de consentimiento.
+
 El servicio `app.services.birthday_promotions.BirthdayPromotionService` permite filtrar:
 
 - Cumpleaños de hoy.
@@ -184,9 +188,9 @@ El servicio `app.services.birthday_promotions.BirthdayPromotionService` permite 
 - Cumpleaños del proximo mes.
 - Rango de meses.
 - Clientes con o sin fecha de nacimiento.
-- Clientes activos con consentimiento promocional, cuando la campaña lo requiere.
+- Clientes activos con consentimiento promocional.
 
-La exportacion CSV para campañas incluye nombre, apellido, fecha de nacimiento, dia, mes, telefono, correo, consentimiento, ultima compra y premios disponibles.
+La exportacion CSV para campañas incluye nombre, apellido, fecha de nacimiento, dia, mes, telefono, correo, ultima compra y premios disponibles. No incluye una columna visible de consentimiento.
 
 Ver [docs/promociones_cumpleanos.md](docs/promociones_cumpleanos.md).
 

@@ -65,14 +65,15 @@ class CustomerDialog(QDialog):
         self.notes_input = QTextEdit()
         self.notes_input.setFixedHeight(90)
         self.marketing_consent_input = QCheckBox("Acepta recibir promociones")
+        self.marketing_consent_input.toggled.connect(self._toggle_marketing_consent)
 
         form.addRow("Nombre *", self.first_name_input)
         form.addRow("Apellido *", self.last_name_input)
         form.addRow("Telefono", self.phone_input)
         form.addRow("Correo", self.email_input)
+        form.addRow("", self.marketing_consent_input)
         form.addRow("Fecha de nacimiento", birth_date_row)
         form.addRow("Observaciones", self.notes_input)
-        form.addRow("", self.marketing_consent_input)
 
         self.buttons = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
         self.buttons.button(QDialogButtonBox.Save).setText(
@@ -84,6 +85,7 @@ class CustomerDialog(QDialog):
 
         layout.addLayout(form)
         layout.addWidget(self.buttons)
+        self._sync_birth_date_controls()
 
     def _load_customer(self, customer: CustomerRecord) -> None:
         self.first_name_input.setText(customer.first_name)
@@ -98,6 +100,7 @@ class CustomerDialog(QDialog):
             self._clear_birth_date()
         self.notes_input.setPlainText(customer.notes or "")
         self.marketing_consent_input.setChecked(customer.marketing_consent)
+        self._sync_birth_date_controls()
 
     def _save(self) -> None:
         try:
@@ -159,11 +162,35 @@ class CustomerDialog(QDialog):
             return ""
         return self.birth_date_input.date().toString("yyyy-MM-dd")
 
+    def _toggle_marketing_consent(self, checked: bool) -> None:
+        if not checked and not self.birth_date_empty_input.isChecked():
+            answer = QMessageBox.question(
+                self,
+                "Retirar consentimiento",
+                "Al retirar el consentimiento promocional, la fecha de nacimiento dejará de "
+                "utilizarse para campañas. ¿Desea eliminar también la fecha guardada?",
+                QMessageBox.Yes | QMessageBox.No,
+            )
+            if answer != QMessageBox.Yes:
+                self.marketing_consent_input.blockSignals(True)
+                self.marketing_consent_input.setChecked(True)
+                self.marketing_consent_input.blockSignals(False)
+                self._sync_birth_date_controls()
+                return
+            self._clear_birth_date()
+        self._sync_birth_date_controls()
+
     def _toggle_birth_date_empty(self, checked: bool) -> None:
-        self.birth_date_input.setEnabled(not checked)
+        self._sync_birth_date_controls()
         if not checked and self.birth_date_input.date() == QDate(1900, 1, 1):
             self.birth_date_input.setDate(QDate.currentDate().addYears(-30))
 
     def _clear_birth_date(self) -> None:
         self.birth_date_empty_input.setChecked(True)
         self.birth_date_input.setDate(QDate(1900, 1, 1))
+        self._sync_birth_date_controls()
+
+    def _sync_birth_date_controls(self) -> None:
+        consent = self.marketing_consent_input.isChecked()
+        self.birth_date_empty_input.setEnabled(consent)
+        self.birth_date_input.setEnabled(consent and not self.birth_date_empty_input.isChecked())

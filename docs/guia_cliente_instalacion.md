@@ -68,12 +68,12 @@ Para crear una copia:
 2. Entrar en `Crear copia de seguridad`.
 3. Presionar `Crear copia ahora`.
 
-## 6. Cumpleanos del mes
+## 6. Cumpleanos
 
 En el panel principal hay una opcion:
 
 ```text
-Cumpleaños del mes
+Cumpleaños
 ```
 
 Desde ahi se puede ver que clientes cumplen anos en el mes seleccionado y exportar un CSV para campanas.

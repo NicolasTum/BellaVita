@@ -91,11 +91,19 @@ class CustomerRepository:
                 """,
                 (customer_id, f"{customer.first_name} {customer.last_name}"),
             )
+            if customer.birth_date:
+                self._audit_customer_change(connection, "CUSTOMER_BIRTH_DATE_ADDED", customer_id, "birth_date=set")
+            if customer.marketing_consent:
+                self._audit_customer_change(connection, "MARKETING_CONSENT_GRANTED", customer_id, "marketing_consent=true")
             return customer_id
 
     def update(self, customer_id: int, customer: CustomerCreate) -> None:
         with sqlite3.connect(self._database_path) as connection:
             connection.execute("PRAGMA foreign_keys = ON;")
+            previous = connection.execute(
+                "SELECT birth_date, marketing_consent FROM customers WHERE id = ?",
+                (customer_id,),
+            ).fetchone()
             connection.execute(
                 """
                 UPDATE customers
@@ -134,6 +142,20 @@ class CustomerRepository:
                 """,
                 (customer_id, f"{customer.first_name} {customer.last_name}"),
             )
+            if previous:
+                previous_birth_date, previous_consent = previous[0], bool(previous[1])
+                if previous_birth_date != customer.birth_date:
+                    if previous_birth_date and not customer.birth_date:
+                        action = "CUSTOMER_BIRTH_DATE_REMOVED"
+                    elif previous_birth_date and customer.birth_date:
+                        action = "CUSTOMER_BIRTH_DATE_UPDATED"
+                    else:
+                        action = "CUSTOMER_BIRTH_DATE_ADDED"
+                    self._audit_customer_change(connection, action, customer_id, "birth_date=changed")
+                if previous_consent != customer.marketing_consent:
+                    action = "MARKETING_CONSENT_GRANTED" if customer.marketing_consent else "MARKETING_CONSENT_REVOKED"
+                    value = "marketing_consent=true" if customer.marketing_consent else "marketing_consent=false"
+                    self._audit_customer_change(connection, action, customer_id, value)
 
     def set_active(self, customer_id: int, is_active: bool) -> None:
         with sqlite3.connect(self._database_path) as connection:
@@ -353,4 +375,19 @@ class CustomerRepository:
             current_cycle_average=str(row[14]),
             current_cycle_target=row[15],
             completed_cycles=row[16],
+        )
+
+    @staticmethod
+    def _audit_customer_change(
+        connection: sqlite3.Connection,
+        action: str,
+        customer_id: int,
+        value: str,
+    ) -> None:
+        connection.execute(
+            """
+            INSERT INTO audit_logs (action, entity, entity_id, new_value)
+            VALUES (?, 'customers', ?, ?)
+            """,
+            (action, customer_id, value),
         )

@@ -106,7 +106,7 @@ def test_main_window_replaces_about_button_with_footer_label(tmp_path, monkeypat
     footer = window.findChild(QLabel, "FooterText")
 
     assert "Acerca de" not in button_texts
-    assert "Cumpleaños del mes" in button_texts
+    assert "Cumpleaños" in button_texts
     assert footer is not None
     assert f"Bella Vita · Club de Compras · Versión {VERSION}" in footer.text()
     assert "QCheckBox::indicator" in window._stylesheet()

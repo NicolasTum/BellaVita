@@ -74,6 +74,10 @@ class CustomerService:
             raise CustomerValidationError("Ingresá al menos un teléfono o un correo.")
         if customer.email and "@" not in customer.email:
             raise CustomerValidationError("El correo no parece válido.")
+        if customer.birth_date and not customer.marketing_consent:
+            raise CustomerValidationError(
+                "Para registrar la fecha de nacimiento, el cliente debe aceptar recibir promociones."
+            )
         if customer.birth_date:
             birth_date = self._parse_birth_date(customer.birth_date)
             if birth_date > date.today():
