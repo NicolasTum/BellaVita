@@ -35,6 +35,7 @@ backups/
 backup/
 exports/
 logs/
+/config/
 *.bak
 *.tmp
 *.log

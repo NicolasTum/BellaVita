@@ -42,7 +42,7 @@ from app.ui.purchase_page import PurchasePage
 from app.ui.rewards_page import RewardsPage
 from app.ui.settings_page import SettingsPage
 from app.utils.money import format_money, money_from_db
-from app.utils.paths import database_path
+from app.utils.paths import database_path, resource_path
 
 
 def _font_family() -> str:
@@ -559,6 +559,7 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
 
     def _stylesheet(self) -> str:
+        check_icon = resource_path("assets", "icons", "check_white.svg").as_posix()
         return (
             """
             QWidget {
@@ -628,6 +629,33 @@ class MainWindow(QMainWindow):
                 color: #8a837a;
                 font-size: 12px;
             }
+            QCheckBox {
+                spacing: 8px;
+                color: #252525;
+                min-height: 24px;
+            }
+            QCheckBox::indicator {
+                width: 20px;
+                height: 20px;
+                border: 2px solid #4f5d5d;
+                border-radius: 5px;
+                background: #ffffff;
+            }
+            QCheckBox::indicator:unchecked:hover {
+                border-color: #2f6f73;
+                background: #fbfaf7;
+            }
+            QCheckBox::indicator:focus {
+                border: 2px solid #214f52;
+            }
+            QCheckBox::indicator:checked {
+                background: #2f6f73;
+                border: 2px solid #214f52;
+                image: url("%s");
+            }
+            QCheckBox::indicator:checked:hover {
+                background: #285f63;
+            }
             QLabel#TotalLabel {
                 color: #214f52;
                 font-size: 24px;
@@ -691,5 +719,5 @@ class MainWindow(QMainWindow):
                 background: #9aa4a5;
             }
             """
-            % _font_family()
+            % (_font_family(), check_icon)
         )

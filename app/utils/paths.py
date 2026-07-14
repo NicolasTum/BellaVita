@@ -46,10 +46,14 @@ def backup_dir() -> Path:
     return user_data_dir() / "backups"
 
 
+def config_dir() -> Path:
+    return user_data_dir() / "config"
+
+
 def export_dir() -> Path:
     return user_data_dir() / "exports"
 
 
 def ensure_runtime_dirs() -> None:
-    for directory in (data_dir(), log_dir(), backup_dir(), export_dir()):
+    for directory in (data_dir(), log_dir(), backup_dir(), export_dir(), config_dir()):
         directory.mkdir(parents=True, exist_ok=True)

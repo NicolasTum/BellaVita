@@ -1,0 +1,7 @@
+Los datos locales se conservan durante actualizaciones y desinstalaciones.
+
+La base de datos, logs, respaldos y exportaciones se guardan fuera de la carpeta de instalacion, en:
+
+%LOCALAPPDATA%\ClubCompras\
+
+Esto permite actualizar la aplicacion sin perder clientes, compras ni respaldos.

@@ -6,7 +6,7 @@ import sys
 from app.config.settings import SETTINGS
 from app.database.bootstrap import ensure_default_admin
 from app.database.schema import initialize_database
-from app.utils.paths import database_path, log_dir
+from app.utils.paths import database_path, ensure_runtime_dirs, log_dir
 
 
 def configure_logging() -> None:
@@ -24,6 +24,7 @@ def configure_logging() -> None:
 
 
 def run() -> int:
+    ensure_runtime_dirs()
     configure_logging()
     db_path = database_path()
     initialize_database(db_path)

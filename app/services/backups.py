@@ -335,6 +335,9 @@ class BackupService:
         preferred = backup_dir()
         try:
             preferred.mkdir(parents=True, exist_ok=True)
+            probe = preferred / ".write_test"
+            probe.write_text("", encoding="utf-8")
+            probe.unlink()
             return preferred
         except OSError:
             return self._database_path.parent / "backups"

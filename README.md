@@ -118,6 +118,15 @@ En Windows se ubica en:
 C:\Users\USUARIO\AppData\Local\ClubCompras\data\club_compras.db
 ```
 
+En Windows tambien se crean:
+
+```text
+%LOCALAPPDATA%\ClubCompras\logs
+%LOCALAPPDATA%\ClubCompras\backups
+%LOCALAPPDATA%\ClubCompras\exports
+%LOCALAPPDATA%\ClubCompras\config
+```
+
 Tambien se resuelven de forma centralizada:
 
 - Datos de usuario: `app.utils.paths.user_data_dir()`
@@ -179,29 +188,43 @@ git push -u origin main
 
 ## Windows
 
-Compilar el `.exe` desde Windows:
+Compilar la aplicacion y, si Inno Setup esta disponible, el instalador desde Windows:
 
 ```powershell
 .\scripts\build_windows.ps1
 ```
 
-El script instala dependencias, ejecuta `pytest` y compila con:
+El script crea o usa `.venv`, instala dependencias, ejecuta `pytest`, limpia builds anteriores y compila con:
 
 ```powershell
 .\.venv\Scripts\pyinstaller.exe --clean --noconfirm club_compras_windows.spec
 ```
 
-El ejecutable queda en:
+La aplicacion `onedir` queda en:
 
 ```text
-dist/Club de Compras.exe
+dist/Club de Compras/Club de Compras.exe
+```
+
+Si `ISCC.exe` esta disponible, el instalador queda en:
+
+```text
+dist/installer/BellaVita_ClubDeCompras_Setup_0.1.0.exe
 ```
 
 Notas:
 
-- El `.exe` debe generarse en Windows.
+- El `.exe` y el instalador deben generarse en Windows.
 - No se incluye la base real ni backups.
-- `installer/club_compras.iss` queda como base para Inno Setup.
+- `installer/windows/ClubDeCompras.iss` instala en `{autopf}\Bella Vita\Club de Compras`.
+- El instalador crea acceso directo en el menu Inicio y ofrece crear acceso directo en el escritorio.
+- Actualizar o desinstalar la aplicacion no elimina la base local ni respaldos.
+
+Para enviar a una computadora de prueba:
+
+1. Generar el instalador en Windows o con GitHub Actions.
+2. Enviar `dist/installer/BellaVita_ClubDeCompras_Setup_0.1.0.exe`.
+3. La persona de prueba debe seguir [docs/instalacion_windows.md](docs/instalacion_windows.md).
 
 ## macOS
 
@@ -255,6 +278,20 @@ El workflow compila en runners separados:
 - `windows-latest`: genera `club-compras-windows`.
 
 Los compilados se publican como artifacts privados del workflow dentro del repositorio privado. Antes de cada compilacion se ejecutan las pruebas.
+
+El workflow especifico del instalador Windows esta en:
+
+```text
+.github/workflows/build-windows-installer.yml
+```
+
+Se ejecuta manualmente con `workflow_dispatch` o al crear una etiqueta `v*`. Publica el artifact privado:
+
+```text
+BellaVita-ClubDeCompras-Windows-Installer
+```
+
+Para descargarlo, entrar en GitHub Actions, abrir la ejecucion del workflow y descargar el artifact. El instalador no se sube al repositorio.
 
 ## Backups y Google Drive
 

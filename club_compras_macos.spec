@@ -4,6 +4,9 @@ from pathlib import Path
 
 
 project_dir = Path.cwd()
+version_namespace = {}
+exec((project_dir / "app" / "version.py").read_text(encoding="utf-8"), version_namespace)
+app_version = version_namespace["VERSION"]
 
 block_cipher = None
 
@@ -79,8 +82,8 @@ app = BUNDLE(
     info_plist={
         "CFBundleName": "Club de Compras",
         "CFBundleDisplayName": "Club de Compras",
-        "CFBundleShortVersionString": "0.1.0",
-        "CFBundleVersion": "0.1.0",
+        "CFBundleShortVersionString": app_version,
+        "CFBundleVersion": app_version,
         "NSHighResolutionCapable": True,
     },
 )

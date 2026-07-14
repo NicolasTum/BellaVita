@@ -17,6 +17,7 @@ from app.services.settings import CurrentUser, SettingsPermissionError, Settings
 from app.ui.main_window import MainWindow
 from app.ui.purchase_page import PurchasePage
 from app.ui.settings_page import SettingsPage
+from app.version import VERSION
 
 
 def _app() -> QApplication:
@@ -106,7 +107,10 @@ def test_main_window_replaces_about_button_with_footer_label(tmp_path, monkeypat
 
     assert "Acerca de" not in button_texts
     assert footer is not None
-    assert "Bella Vita · Club de Compras · Versión 0.1.0" in footer.text()
+    assert f"Bella Vita · Club de Compras · Versión {VERSION}" in footer.text()
+    assert "QCheckBox::indicator" in window._stylesheet()
+    assert "border: 2px solid #4f5d5d" in window._stylesheet()
+    assert "background: #2f6f73" in window._stylesheet()
 
 
 def test_existing_cycle_keeps_target_after_setting_change(tmp_path) -> None:
