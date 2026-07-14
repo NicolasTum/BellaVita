@@ -7,14 +7,16 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import sqlite3
 
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel, QPushButton
 
 from app.database.schema import initialize_database
 from app.services.customers import CustomerService
 from app.services.purchases import PurchaseService
 from app.services.rewards import RewardService
 from app.services.settings import CurrentUser, SettingsPermissionError, SettingsService, SettingsValidationError
+from app.ui.main_window import MainWindow
 from app.ui.purchase_page import PurchasePage
+from app.ui.settings_page import SettingsPage
 
 
 def _app() -> QApplication:
@@ -52,6 +54,30 @@ def test_default_target_and_permissions(tmp_path) -> None:
         seller.save_settings({"loyalty_target_purchase_count": "8"})
 
 
+def test_settings_page_shows_clear_loyalty_target_text_and_value(tmp_path) -> None:
+    app = _app()
+    db_path = tmp_path / "club.db"
+    initialize_database(db_path)
+    service = SettingsService(db_path)
+    page = SettingsPage(service, lambda: None, lambda: None)
+    page.show()
+    app.processEvents()
+
+    labels = [label.text() for label in page.findChildren(QLabel)]
+
+    assert page.target_input.value() == 6
+    assert any("Compras necesarias para obtener el premio" in text for text in labels)
+    assert any("Cada compra agrega un cupón" in text for text in labels)
+    assert page.target_current_label.text() == "Configuración actual: 6 compras por ciclo"
+    assert "background: #ffffff" in page.target_input.styleSheet()
+    assert "color: #252525" in page.target_input.styleSheet()
+
+    page.target_input.setValue(8)
+    app.processEvents()
+
+    assert page.target_current_label.text() == "Configuración actual: 8 compras por ciclo"
+
+
 def test_admin_changes_target_and_new_cycle_uses_it(tmp_path) -> None:
     db_path = tmp_path / "club.db"
     initialize_database(db_path)
@@ -64,6 +90,23 @@ def test_admin_changes_target_and_new_cycle_uses_it(tmp_path) -> None:
 
     assert result.target_purchase_count == 8
     assert result.missing_count == 7
+
+
+def test_main_window_replaces_about_button_with_footer_label(tmp_path, monkeypatch) -> None:
+    app = _app()
+    db_path = tmp_path / "club.db"
+    initialize_database(db_path)
+    monkeypatch.setattr("app.ui.main_window.database_path", lambda: db_path)
+
+    window = MainWindow()
+    app.processEvents()
+
+    button_texts = [button.text() for button in window.findChildren(QPushButton)]
+    footer = window.findChild(QLabel, "FooterText")
+
+    assert "Acerca de" not in button_texts
+    assert footer is not None
+    assert "Bella Vita · Club de Compras · Versión 0.1.0" in footer.text()
 
 
 def test_existing_cycle_keeps_target_after_setting_change(tmp_path) -> None:

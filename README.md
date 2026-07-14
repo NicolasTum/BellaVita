@@ -66,7 +66,11 @@ Implementado en desarrollo:
 - Flujo post-compra optimizado para registrar compras consecutivas.
 - Configuracion de administrador guardada en `app_settings`.
 - Cantidad objetivo de compras por ciclo configurable; cada ciclo conserva su propio objetivo.
+- Pantalla de configuracion clara para compras necesarias por ciclo, con valor visible entre 1 y 50.
 - Datos generales de tienda y correo promocional preparados para integraciones futuras.
+- Respaldos manuales y automaticos con SQLite backup API, integridad, limpieza y restauracion segura.
+- Carpeta de respaldo configurable, apta para una carpeta local o sincronizada por Google Drive.
+- Pie de version discreto en el panel principal.
 
 Pendiente por fases:
 
@@ -74,7 +78,6 @@ Pendiente por fases:
 - Historial avanzado con edicion auditada.
 - Reportes/exportaciones.
 - Seguridad completa por usuarios y roles reales.
-- Backups/restauracion desde interfaz.
 
 La auditoria funcional esta en:
 
@@ -129,7 +132,32 @@ Migraciones actuales:
 
 - `loyalty_cycles.target_purchase_count`: guarda el objetivo de compras de cada ciclo.
 - `purchases.sticker_number`: permite objetivos configurables mayores a 6.
-- `app_settings`: guarda promocion, tienda, moneda y datos de correo promocional.
+- `backup_logs`: registra respaldos, restauraciones, errores y limpiezas.
+- `app_settings`: guarda promocion, tienda, moneda, datos de correo promocional y carpeta de respaldo.
+
+## Respaldos y restauracion
+
+La base activa permanece siempre local:
+
+```text
+~/Library/Application Support/ClubCompras/data/club_compras.db
+```
+
+La carpeta de respaldos se puede cambiar desde la pantalla `Respaldos`. Por defecto usa:
+
+```text
+~/Library/Application Support/ClubCompras/backups/
+```
+
+Las copias se crean con el formato:
+
+```text
+club_compras_YYYY-MM-DD_HHMMSS.db
+```
+
+El respaldo usa la API segura de SQLite, verifica integridad antes y despues de copiar, audita el resultado y conserva inicialmente las ultimas 30 copias sin borrar nunca la unica copia existente. Tambien se crean respaldos automaticos al cerrar correctamente la aplicacion y despues de compras, canjes de premios o cambios de configuracion, con un maximo aproximado de uno cada 30 minutos.
+
+La restauracion verifica el archivo elegido y crea antes una copia de seguridad de la base actual. Despues de restaurar, cerrar y abrir nuevamente la aplicacion.
 
 ## GitHub
 
@@ -230,6 +258,6 @@ Los compilados se publican como artifacts privados del workflow dentro del repos
 
 ## Backups y Google Drive
 
-La base activa debe permanecer local. Google Drive se usara solo como destino de copias de seguridad configurables desde la aplicacion.
+La base activa debe permanecer local. Google Drive se puede usar como destino de copias de seguridad configurables desde la aplicacion, seleccionando una carpeta sincronizada.
 
 Ver [docs/manual_usuario.md](docs/manual_usuario.md).

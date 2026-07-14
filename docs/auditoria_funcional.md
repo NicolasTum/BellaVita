@@ -24,7 +24,8 @@ Fecha de auditoria: 2026-07-12
 | `loyalty_cycles` | `target_purchase_count INTEGER NOT NULL DEFAULT 6` | Conservar el objetivo de compras de cada ciclo aunque cambie la configuracion futura |
 | `purchases` | Rebuild compatible del check de `sticker_number` a `>= 1` | Permitir ciclos nuevos con mas de 6 stickers |
 | `purchase_items` | Rebuild de FK si apuntaba a tabla legacy durante migracion SQLite | Mantener integridad al migrar bases existentes |
-| `app_settings` | Valores por defecto de tienda, promocion, correo y moneda | Evitar configuracion fija en codigo |
+| `backup_logs` | Columnas `reason`, `error` y `restored_from` | Registrar respaldos, restauraciones, errores y limpieza |
+| `app_settings` | Valores por defecto de tienda, promocion, correo, moneda y carpeta de respaldo | Evitar configuracion fija en codigo |
 
 ## Auditoria inicial encontrada
 
@@ -44,7 +45,7 @@ Fecha de auditoria: 2026-07-12
 | Panel principal | Nuevo cliente | `app/ui/main_window.py` | Abrir alta, guardar y abrir ficha | Funcional |
 | Panel principal | Registrar compra | `app/ui/main_window.py` | Abrir modulo de compras | Parcial: navega a pantalla preparada para Fase 3 |
 | Panel principal | Premios disponibles | `app/ui/main_window.py` | Abrir listado de premios | Parcial: navega a pantalla preparada para Fase 5 |
-| Panel principal | Crear copia de seguridad | `app/ui/main_window.py` | Abrir modulo de backups | Parcial: navega a pantalla preparada para Fase 9 |
+| Panel principal | Crear copia de seguridad | `app/ui/main_window.py`, `app/ui/backups_page.py` | Abrir modulo de backups | Funcional |
 | Busqueda de clientes | Volver | `app/ui/main_window.py` | Regresar al panel principal | Funcional |
 | Busqueda de clientes | Nuevo cliente | `app/ui/main_window.py` | Abrir alta y refrescar listado | Funcional |
 | Busqueda de clientes | Buscar mientras se escribe | `app/ui/main_window.py` | Filtrar por ID, nombre, apellido, telefono o correo | Funcional |
@@ -107,9 +108,34 @@ Fecha de auditoria: 2026-07-12
 | Registrar compra | Cliente seleccionado | `app/ui/purchase_page.py` | Deseleccionarse despues de guardar | Funcional |
 | Panel principal | Configuracion | `app/ui/main_window.py`, `app/ui/settings_page.py` | Abrir configuracion solo para admin | Funcional |
 | Configuracion | Promocion | `app/ui/settings_page.py`, `app/services/settings.py` | Cambiar objetivo de compras, nombre, descripcion y estado | Funcional |
+| Configuracion | Compras necesarias para obtener el premio | `app/ui/settings_page.py` | Mostrar valor claro entre 1 y 50, ayuda contextual y configuracion actual | Funcional |
 | Configuracion | Correo promociones | `app/ui/settings_page.py`, `app/services/settings.py` | Guardar datos para futura integracion sin contrasenas | Funcional |
 | Configuracion | Datos generales | `app/ui/settings_page.py`, `app/services/settings.py` | Guardar datos de tienda, moneda y textos legales | Funcional |
 | Configuracion | Guardar cambios | `app/services/settings.py` | Validar, persistir en `app_settings` y auditar | Funcional |
+| Panel principal | Pie de version | `app/ui/main_window.py` | Mostrar texto discreto no clickeable con version centralizada | Funcional |
+| Panel principal | Acerca de | `app/ui/main_window.py` | No mostrar boton de acerca de | Eliminado |
+
+## Estado despues de respaldos y restauracion
+
+| Pantalla | Boton o accion | Archivo | Accion esperada | Estado actual |
+|---|---|---|---|---|
+| Panel principal | Crear copia de seguridad | `app/ui/main_window.py`, `app/ui/backups_page.py` | Abrir pantalla real de respaldos | Funcional |
+| Respaldos | Estado actual | `app/ui/backups_page.py`, `app/services/backups.py` | Mostrar base activa, carpeta, ultimo respaldo, cantidad de copias y estado | Funcional |
+| Respaldos | Crear copia ahora | `app/services/backups.py` | Crear copia segura con API de backup SQLite e integridad | Funcional |
+| Respaldos | Elegir carpeta de respaldo | `app/ui/backups_page.py`, `app/services/backups.py` | Guardar carpeta configurable en `app_settings` | Funcional |
+| Respaldos | Abrir carpeta de respaldos | `app/ui/backups_page.py` | Abrir carpeta con Qt Desktop Services | Funcional |
+| Respaldos | Restaurar copia | `app/ui/backups_page.py`, `app/services/backups.py` | Validar copia, crear copia previa, restaurar y auditar | Funcional |
+| Respaldos automaticos | Cierre, compra, canje, configuracion | `app/ui/main_window.py`, `app/services/backups.py` | Crear respaldo automatico con limite de 30 minutos | Funcional |
+| Limpieza de respaldos | Retencion | `app/services/backups.py` | Conservar ultimas 30 copias sin borrar la unica existente | Funcional |
+
+Eventos auditados:
+
+- `BACKUP_CREATED`
+- `BACKUP_FAILED`
+- `BACKUP_FOLDER_CHANGED`
+- `BACKUP_RESTORED`
+- `BACKUP_RESTORE_FAILED`
+- `BACKUP_CLEANUP`
 
 ## Senales y callbacks revisados
 
@@ -132,7 +158,7 @@ Comando:
 Resultado:
 
 ```text
-43 passed
+52 passed, 1 warning
 ```
 
 Cobertura funcional actual de pruebas:
@@ -161,6 +187,10 @@ Cobertura funcional actual de pruebas:
 - Objetivo de stickers configurable entre 1 y 50.
 - `target_purchase_count` guardado por ciclo.
 - Flujo post-compra vuelve a registro vacío y enfoca buscador.
+- Configuracion muestra claramente compras necesarias para obtener el premio.
+- Respaldos manuales, carpeta no disponible, limpieza y restauracion.
+- Auditoria de respaldo y restauracion.
+- Eliminacion del boton `Acerca de` y pie de version no clickeable.
 
 ## Prueba manual documentada
 
@@ -194,6 +224,11 @@ Flujo probado:
 18. `Ver historial` muestra compras, ciclos y premios del cliente.
 19. Despues de registrar una compra la pantalla queda lista para otro cliente.
 20. Configuracion permite cambiar el objetivo para ciclos nuevos sin alterar ciclos existentes.
+21. Configuracion muestra `Compras necesarias para obtener el premio`, ayuda contextual y valor legible.
+22. Respaldos abre pantalla real con base activa, carpeta y estado.
+23. Crear copia genera un archivo `club_compras_YYYY-MM-DD_HHMMSS.db`.
+24. Restaurar copia valida integridad y crea copia previa.
+25. El panel principal ya no muestra boton `Acerca de`; muestra pie de version discreto.
 
 Flujo manual controlado de Fase 3/4:
 
@@ -214,5 +249,5 @@ Flujo manual controlado de Fase 3/4:
 | Fase 5 - Premios | Listado, ficha, canje, validaciones y doble canje | Completada |
 | Fase 6 - Historial y correcciones | Compras, ciclos, premios, anulacion, auditoria | Parcial: historial basico completado; correcciones/anulaciones pendientes |
 | Fase 7 - Reportes | Filtros, metricas, exportacion CSV/Excel | Pendiente |
-| Fase 8 - Configuracion y seguridad | Usuarios, roles, promociones, moneda, backups, auditoria | Parcial: configuracion admin implementada; usuarios/roles avanzados pendientes |
-| Fase 9 - Backups | Crear/restaurar, Google Drive, ultimo backup | Pendiente |
+| Fase 8 - Configuracion y seguridad | Usuarios, roles, promociones, moneda, backups, auditoria | Parcial: configuracion admin y auditoria de respaldos implementadas; usuarios/roles avanzados pendientes |
+| Fase 9 - Backups | Crear/restaurar, Google Drive, ultimo backup | Completada para carpeta local o sincronizada |

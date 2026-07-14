@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
@@ -27,11 +28,13 @@ from app.repositories.customers import CustomerRecord
 from app.repositories.dashboard import DashboardRepository
 from app.repositories.history import CustomerHistoryRepository
 from app.repositories.loyalty import LoyaltyRepository
+from app.services.backups import BackupError, BackupService
 from app.services.customers import CustomerService
 from app.services.purchases import PurchaseService
 from app.services.rewards import RewardService
 from app.services.settings import SettingsService
 from app.ui.branding import app_icon, logo_label
+from app.ui.backups_page import BackupsPage
 from app.ui.customer_history_page import CustomerHistoryPage
 from app.ui.customer_dialog import CustomerDialog
 from app.ui.loyalty_card_page import LoyaltyCardPage
@@ -57,6 +60,7 @@ class MainWindow(QMainWindow):
         self._settings_service = SettingsService(database_path())
         self._purchase_service = PurchaseService(database_path(), self._settings_service)
         self._reward_service = RewardService(database_path())
+        self._backup_service = BackupService(database_path())
         self._loyalty_repository = LoyaltyRepository(database_path())
         self._history_repository = CustomerHistoryRepository(database_path())
         self._dashboard_repository = DashboardRepository(database_path())
@@ -101,6 +105,10 @@ class MainWindow(QMainWindow):
             self._show_home,
             self._after_settings_saved,
         )
+        self.backups_page = BackupsPage(
+            self._backup_service,
+            self._show_home,
+        )
         self.placeholder_page = self._build_placeholder_page()
 
         self.stack.addWidget(self.home_page)
@@ -111,6 +119,7 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.rewards_page)
         self.stack.addWidget(self.customer_history_page)
         self.stack.addWidget(self.settings_page)
+        self.stack.addWidget(self.backups_page)
         self.stack.addWidget(self.placeholder_page)
 
         root = QWidget()
@@ -139,8 +148,7 @@ class MainWindow(QMainWindow):
             ("Nuevo cliente", self._open_new_customer),
             ("Registrar compra", self._show_purchase_page),
             ("Premios disponibles", self._show_rewards_page),
-            ("Crear copia de seguridad", lambda: self._show_placeholder("Backups", "Fase 9")),
-            ("Acerca de", self._show_about_dialog),
+            ("Crear copia de seguridad", self._show_backups_page),
         ]
         if self._settings_service.can_open_settings():
             buttons.append(("Configuración", self._show_settings_page))
@@ -153,12 +161,17 @@ class MainWindow(QMainWindow):
             button.clicked.connect(slot)
             grid.addWidget(button, index // 2, index % 2)
 
+        footer = QLabel(f"Bella Vita · Club de Compras · Versión {SETTINGS.version}\nUso interno")
+        footer.setObjectName("FooterText")
+        footer.setAlignment(Qt.AlignCenter)
+
         layout.addWidget(brand_header)
         layout.addSpacing(12)
         layout.addWidget(self.dashboard_label)
         layout.addSpacing(20)
         layout.addLayout(grid)
         layout.addStretch(2)
+        layout.addWidget(footer)
         return page
 
     def _brand_header(self) -> QWidget:
@@ -414,6 +427,7 @@ class MainWindow(QMainWindow):
     def _show_purchase_page(self) -> None:
         self.purchase_page.refresh()
         self.stack.setCurrentWidget(self.purchase_page)
+        self._run_automatic_backup("purchase_saved")
 
     def _show_purchase_for_customer(self, customer_id: int) -> None:
         self.purchase_page.preselect_customer(customer_id)
@@ -439,35 +453,9 @@ class MainWindow(QMainWindow):
         self.rewards_page.refresh()
         self.stack.setCurrentWidget(self.rewards_page)
 
-    def _show_about_dialog(self) -> None:
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Acerca de Bella Vita")
-        dialog.setWindowIcon(app_icon())
-        dialog.setStyleSheet(self._stylesheet())
-        dialog.setModal(True)
-
-        layout = QVBoxLayout(dialog)
-        layout.setContentsMargins(28, 28, 28, 28)
-        layout.setSpacing(14)
-
-        logo = logo_label(120)
-        layout.addWidget(logo, alignment=Qt.AlignCenter)
-
-        title = QLabel("Bella Vita")
-        title.setObjectName("BrandName")
-        title.setAlignment(Qt.AlignCenter)
-        subtitle = QLabel(f"Club de Compras\nVersion {SETTINGS.version}")
-        subtitle.setObjectName("Subtitle")
-        subtitle.setAlignment(Qt.AlignCenter)
-
-        close_button = QPushButton("Cerrar")
-        close_button.clicked.connect(dialog.accept)
-
-        layout.addWidget(title)
-        layout.addWidget(subtitle)
-        layout.addSpacing(8)
-        layout.addWidget(close_button)
-        dialog.exec()
+    def _show_backups_page(self) -> None:
+        self.backups_page.refresh()
+        self.stack.setCurrentWidget(self.backups_page)
 
     def _show_settings_page(self) -> None:
         if not self._settings_service.can_open_settings():
@@ -479,6 +467,7 @@ class MainWindow(QMainWindow):
     def _after_settings_saved(self) -> None:
         self._refresh_dashboard()
         self.purchase_page.refresh()
+        self._run_automatic_backup("settings_saved")
 
     def _show_rewards_for_current_customer(self) -> None:
         if self._selected_customer_id is None:
@@ -501,6 +490,7 @@ class MainWindow(QMainWindow):
         self._refresh_customer_table()
         if self._selected_customer_id == customer_id:
             self._show_customer_detail(customer_id)
+        self._run_automatic_backup("reward_changed")
 
     def _back_to_current_customer(self) -> None:
         if self._selected_customer_id is not None:
@@ -557,6 +547,16 @@ class MainWindow(QMainWindow):
     def _return_from_placeholder(self) -> None:
         previous = getattr(self, "_previous_page", self.home_page)
         self.stack.setCurrentWidget(previous)
+
+    def _run_automatic_backup(self, reason: str) -> None:
+        try:
+            self._backup_service.create_automatic_backup(reason)
+        except BackupError as exc:
+            self.statusBar().showMessage(f"No se pudo crear respaldo automático: {exc}", 8000)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self._run_automatic_backup("app_close")
+        super().closeEvent(event)
 
     def _stylesheet(self) -> str:
         return (
@@ -624,6 +624,10 @@ class MainWindow(QMainWindow):
                 color: #67615a;
                 font-size: 13px;
             }
+            QLabel#FooterText {
+                color: #8a837a;
+                font-size: 12px;
+            }
             QLabel#TotalLabel {
                 color: #214f52;
                 font-size: 24px;
@@ -657,11 +661,17 @@ class MainWindow(QMainWindow):
                 color: #214f52;
                 font-weight: 700;
             }
-            QLineEdit, QTextEdit, QTableWidget {
+            QLineEdit, QTextEdit, QTableWidget, QSpinBox {
                 background: #ffffff;
+                color: #252525;
                 border: 1px solid #d8d1c8;
                 border-radius: 6px;
                 padding: 8px;
+            }
+            QSpinBox::up-button, QSpinBox::down-button {
+                background: #e8e1d7;
+                border: 1px solid #b9afa3;
+                width: 22px;
             }
             QPushButton {
                 background: #2f6f73;

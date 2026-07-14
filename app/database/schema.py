@@ -129,7 +129,10 @@ CREATE TABLE IF NOT EXISTS backup_logs (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     path TEXT NOT NULL,
     status TEXT NOT NULL,
-    message TEXT
+    message TEXT,
+    reason TEXT,
+    error TEXT,
+    restored_from TEXT
 );
 """
 
@@ -178,6 +181,13 @@ def _apply_compatible_upgrades(connection: sqlite3.Connection) -> None:
         """
     )
     connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_rewards_cycle_id ON rewards(cycle_id)")
+    backup_columns = _column_names(connection, "backup_logs")
+    if "reason" not in backup_columns:
+        connection.execute("ALTER TABLE backup_logs ADD COLUMN reason TEXT")
+    if "error" not in backup_columns:
+        connection.execute("ALTER TABLE backup_logs ADD COLUMN error TEXT")
+    if "restored_from" not in backup_columns:
+        connection.execute("ALTER TABLE backup_logs ADD COLUMN restored_from TEXT")
 
 
 def _rebuild_purchases_if_legacy_sticker_check(connection: sqlite3.Connection) -> None:
@@ -294,6 +304,7 @@ DEFAULT_APP_SETTINGS = {
     "currency_symbol": "$",
     "promotion_legal_text": "",
     "marketing_consent_required": "0",
+    "backup_folder_path": "",
 }
 
 

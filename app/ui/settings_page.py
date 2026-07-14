@@ -67,13 +67,53 @@ class SettingsPage(QWidget):
         page = QWidget()
         form = QFormLayout(page)
         self.target_input = QSpinBox()
+        self.target_input.setObjectName("LoyaltyTargetInput")
         self.target_input.setRange(1, 50)
+        self.target_input.setValue(6)
+        self.target_input.setFixedWidth(120)
+        self.target_input.valueChanged.connect(self._update_target_hint)
+        self.target_input.setStyleSheet(
+            """
+            QSpinBox#LoyaltyTargetInput {
+                background: #ffffff;
+                color: #252525;
+                border: 1px solid #b9afa3;
+                border-radius: 6px;
+                padding: 8px 28px 8px 10px;
+                font-size: 16px;
+                font-weight: 700;
+            }
+            QSpinBox#LoyaltyTargetInput::up-button,
+            QSpinBox#LoyaltyTargetInput::down-button {
+                background: #e8e1d7;
+                border: 1px solid #b9afa3;
+                width: 24px;
+            }
+            QSpinBox#LoyaltyTargetInput::up-button:hover,
+            QSpinBox#LoyaltyTargetInput::down-button:hover {
+                background: #d8eee6;
+            }
+            """
+        )
+        self.target_help = QLabel(
+            "Cada compra agrega un cupón. Al completar esta cantidad, se calcula el "
+            "promedio de las compras y se genera el premio."
+        )
+        self.target_help.setObjectName("Hint")
+        self.target_help.setWordWrap(True)
+        self.target_current_label = QLabel()
+        self.target_current_label.setObjectName("Hint")
         self.promotion_name_input = QLineEdit()
         self.promotion_description_input = QTextEdit()
         self.promotion_description_input.setFixedHeight(80)
         self.loyalty_active_input = QCheckBox("Promoción activa")
         self.allow_new_cycle_input = QCheckBox("Permitir ciclo nuevo con premio pendiente")
-        form.addRow("Compras para completar ciclo", self.target_input)
+        target_box = QVBoxLayout()
+        target_box.setSpacing(6)
+        target_box.addWidget(self.target_input)
+        target_box.addWidget(self.target_help)
+        target_box.addWidget(self.target_current_label)
+        form.addRow("Compras necesarias para obtener el premio", target_box)
         form.addRow("Nombre de la promoción", self.promotion_name_input)
         form.addRow("Texto breve", self.promotion_description_input)
         form.addRow("", self.loyalty_active_input)
@@ -127,6 +167,7 @@ class SettingsPage(QWidget):
         values = self._settings_service.get_settings()
         self._loaded_target = int(values["loyalty_target_purchase_count"])
         self.target_input.setValue(self._loaded_target)
+        self._update_target_hint()
         self.promotion_name_input.setText(values["promotion_name"])
         self.promotion_description_input.setPlainText(values["promotion_description"])
         self.loyalty_active_input.setChecked(values["loyalty_active"] == "1")
@@ -168,6 +209,12 @@ class SettingsPage(QWidget):
 
     def _restore_section_defaults(self) -> None:
         self.load_settings()
+
+    def _update_target_hint(self) -> None:
+        if hasattr(self, "target_current_label"):
+            self.target_current_label.setText(
+                f"Configuración actual: {self.target_input.value()} compras por ciclo"
+            )
 
     def _values(self) -> dict[str, str]:
         return {
