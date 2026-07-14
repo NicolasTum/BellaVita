@@ -7,7 +7,6 @@ Aplicacion de escritorio para Windows y macOS destinada a administrar un program
 - Python 3
 - PySide6
 - SQLite
-- SQLAlchemy y Alembic, previstos para la capa de datos completa
 - PyInstaller para generar el ejecutable
 - Inno Setup para el instalador
 
@@ -34,6 +33,7 @@ python -m app.main
 ## Pruebas
 
 ```bash
+pip install -r requirements-build.txt
 pytest
 ```
 
@@ -215,13 +215,13 @@ git push -u origin main
 
 ## Windows
 
-Compilar la aplicacion y, si Inno Setup esta disponible, el instalador desde Windows:
+Compilar la aplicacion y el instalador desde Windows:
 
 ```powershell
 .\scripts\build_windows.ps1
 ```
 
-El script crea o usa `.venv`, instala dependencias, ejecuta `pytest`, limpia builds anteriores y compila con:
+El script crea o usa `.venv`, instala dependencias de build, ejecuta `pytest`, limpia builds anteriores, compila con PyInstaller y genera el instalador con Inno Setup:
 
 ```powershell
 .\.venv\Scripts\pyinstaller.exe --clean --noconfirm club_compras_windows.spec
@@ -230,10 +230,10 @@ El script crea o usa `.venv`, instala dependencias, ejecuta `pytest`, limpia bui
 La aplicacion `onedir` queda en:
 
 ```text
-dist/Club de Compras/Club de Compras.exe
+dist/ClubDeCompras/ClubDeCompras.exe
 ```
 
-Si `ISCC.exe` esta disponible, el instalador queda en:
+El instalador queda en:
 
 ```text
 dist/installer/BellaVita_ClubDeCompras_Setup_0.1.0.exe
@@ -246,6 +246,7 @@ Notas:
 - `installer/windows/ClubDeCompras.iss` instala en `{autopf}\Bella Vita\Club de Compras`.
 - El instalador crea acceso directo en el menu Inicio y ofrece crear acceso directo en el escritorio.
 - Actualizar o desinstalar la aplicacion no elimina la base local ni respaldos.
+- GitHub Actions puede generar el instalador manualmente con el workflow `Build Windows Installer`.
 
 Para enviar a una computadora de prueba:
 

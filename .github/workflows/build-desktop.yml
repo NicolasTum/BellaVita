@@ -40,11 +40,16 @@ jobs:
 
       - name: Build
         shell: pwsh
-        run: .\scripts\build_windows.ps1
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install --upgrade pip
+          .\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
+          .\.venv\Scripts\python.exe -m pytest
+          .\.venv\Scripts\pyinstaller.exe --clean --noconfirm club_compras_windows.spec
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: club-compras-windows
-          path: dist/Club de Compras
+          path: dist/ClubDeCompras
           if-no-files-found: error

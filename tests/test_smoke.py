@@ -11,6 +11,8 @@ def test_settings_are_centralized() -> None:
     assert SETTINGS.app_name == "Club de Compras"
     assert SETTINGS.version == VERSION
     assert SETTINGS.stickers_per_cycle == 6
+    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+    assert f'version = "{VERSION}"' in pyproject
 
 
 def test_database_initializes(tmp_path) -> None:
@@ -163,11 +165,52 @@ def test_windows_build_files_do_not_include_development_database() -> None:
     spec = Path("club_compras_windows.spec").read_text(encoding="utf-8")
     build_script = Path("scripts/build_windows.ps1").read_text(encoding="utf-8")
     installer = Path("installer/windows/ClubDeCompras.iss").read_text(encoding="utf-8")
+    workflow = Path(".github/workflows/build-windows-installer.yml").read_text(encoding="utf-8")
 
     assert '("assets", "assets")' in spec
+    assert 'name="ClubDeCompras"' in spec
     assert "club_compras.db" not in spec
     assert "data" in spec
-    assert "dist\\Club de Compras\\Club de Compras.exe" in build_script
+    assert "dist\\ClubDeCompras" in build_script
+    assert "ClubDeCompras.exe" in build_script
     assert "BellaVita_ClubDeCompras_Setup_$Version.exe" in build_script
     assert "club_compras.db" not in installer
+    assert 'Source: "..\\..\\dist\\ClubDeCompras\\*"' in installer
+    assert '#define MyAppExeName "ClubDeCompras.exe"' in installer
+    assert "BellaVita-ClubDeCompras-Windows-Installer" in workflow
+    assert "Build Windows Installer" in workflow
+    assert "dist/installer/BellaVita_ClubDeCompras_Setup_${{ steps.app_version.outputs.version }}.exe" in workflow
     assert "/Users/" not in installer
+
+
+def test_windows_installer_configuration_preserves_user_data() -> None:
+    installer = Path("installer/windows/ClubDeCompras.iss").read_text(encoding="utf-8")
+    notice = Path("installer/windows/datos_conservados.txt").read_text(encoding="utf-8")
+
+    assert '#define MyAppDirName "Bella Vita\\Club de Compras"' in installer
+    assert "DefaultDirName={autopf}\\{#MyAppDirName}" in installer
+    assert "ArchitecturesAllowed=x64" in installer
+    assert "ArchitecturesInstallIn64BitMode=x64" in installer
+    assert "CloseApplications=yes" in installer
+    assert "Name: \"{autoprograms}\\{#MyAppName}\"" in installer
+    assert "Name: \"{autodesktop}\\{#MyAppName}\"" in installer
+    assert "[UninstallDelete]" in installer
+    assert "%LOCALAPPDATA%\\ClubCompras" in notice
+
+
+def test_packaging_sources_do_not_use_personal_absolute_paths() -> None:
+    checked_paths = [
+        Path("app"),
+        Path("scripts"),
+        Path("installer"),
+        Path(".github/workflows"),
+        Path("club_compras_windows.spec"),
+        Path("club_compras_macos.spec"),
+    ]
+    forbidden = ["/Users/nicolastumaian", "/Users/", "/Applications/"]
+    for path in checked_paths:
+        files = [path] if path.is_file() else [item for item in path.rglob("*") if item.is_file()]
+        for file_path in files:
+            text = file_path.read_text(encoding="utf-8", errors="ignore")
+            for value in forbidden:
+                assert value not in text, f"{value} found in {file_path}"

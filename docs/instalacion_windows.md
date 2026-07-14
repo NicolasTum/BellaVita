@@ -1,48 +1,75 @@
 # Instalacion en Windows - Bella Vita Club de Compras
 
-## Descargar
+## Instalador
 
-Descargar el archivo:
+El archivo esperado es:
 
 ```text
 BellaVita_ClubDeCompras_Setup_0.1.0.exe
 ```
 
-Usar solamente el instalador enviado por Bella Vita o descargado desde el artifact privado del workflow del repositorio.
+La aplicacion instalada no necesita Python, PySide6, SQLite, Visual Studio, Inno Setup ni dependencias manuales.
 
-## Advertencia de Windows
+## Generar desde GitHub Actions
 
-Windows puede mostrar una advertencia porque el instalador todavia no esta firmado digitalmente.
+1. Entrar al repositorio privado en GitHub.
+2. Abrir `Actions`.
+3. Seleccionar el workflow `Build Windows Installer`.
+4. Presionar `Run workflow`.
+5. Esperar a que termine correctamente.
+6. Descargar el artifact:
 
-Si el archivo fue enviado por nosotros:
+```text
+BellaVita-ClubDeCompras-Windows-Installer
+```
 
-1. Hacer doble clic sobre el instalador.
-2. Si aparece una advertencia, seleccionar `Mas informacion`.
-3. Seleccionar `Ejecutar de todas formas`.
-4. Continuar la instalacion.
+GitHub descarga un archivo `.zip`. Extraerlo y usar el instalador:
+
+```text
+BellaVita_ClubDeCompras_Setup_0.1.0.exe
+```
+
+El artifact contiene solo el instalador, no la carpeta completa `dist`.
+
+## Advertencia de Windows SmartScreen
+
+Windows puede mostrar una advertencia porque el instalador todavia no esta firmado digitalmente:
+
+```text
+Windows protegió su PC
+```
+
+Usar:
+
+```text
+Mas informacion
+Ejecutar de todas formas
+```
+
+Hacerlo solamente cuando el instalador proviene de nuestro repositorio o fue enviado directamente por nosotros.
 
 ## Instalar
 
-El instalador crea la aplicacion en:
+1. Hacer doble clic en `BellaVita_ClubDeCompras_Setup_0.1.0.exe`.
+2. Elegir si se quiere crear acceso directo en el escritorio.
+3. Finalizar la instalacion.
+4. Abrir desde el escritorio o desde el menu Inicio.
+
+La carpeta de instalacion predeterminada es:
 
 ```text
 C:\Program Files\Bella Vita\Club de Compras
 ```
 
-Tambien crea acceso directo en el menu Inicio y puede crear un acceso directo en el escritorio.
+El ejecutable instalado se llama:
 
-## Abrir
-
-Abrir desde:
-
-- Menu Inicio: `Bella Vita - Club de Compras`
-- Acceso directo del escritorio, si fue seleccionado durante la instalacion.
-
-No hace falta instalar Python.
+```text
+ClubDeCompras.exe
+```
 
 ## Datos locales
 
-Los datos no se guardan dentro de Program Files ni junto al ejecutable.
+Los datos no se guardan dentro de `Program Files`.
 
 La base activa queda en:
 
@@ -59,7 +86,29 @@ Tambien se usan estas carpetas:
 %LOCALAPPDATA%\ClubCompras\config
 ```
 
-Al actualizar o desinstalar la aplicacion, estos datos locales se conservan.
+La primera ejecucion crea automaticamente las carpetas, la base SQLite, las tablas y los valores por defecto.
+
+## Actualizaciones
+
+Instalar una version nueva encima de la anterior conserva:
+
+- Base de datos.
+- Backups.
+- Logs.
+- Exportaciones.
+- Configuracion local.
+
+No borrar manualmente `%LOCALAPPDATA%\ClubCompras` salvo que se quiera eliminar definitivamente la informacion local.
+
+## Desinstalacion
+
+El desinstalador quita la aplicacion de `Program Files`, pero conserva los datos del usuario en:
+
+```text
+%LOCALAPPDATA%\ClubCompras
+```
+
+Esto permite reinstalar o actualizar sin perder informacion.
 
 ## Crear copia de seguridad
 
@@ -76,7 +125,9 @@ Enviar:
 - Descripcion breve de lo que ocurrio.
 - Captura de pantalla si existe.
 - Fecha y hora aproximada.
-- Archivo de log si se solicita, ubicado en:
+- Archivo de log si se solicita.
+
+Los logs quedan en:
 
 ```text
 %LOCALAPPDATA%\ClubCompras\logs

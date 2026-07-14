@@ -13,6 +13,6 @@ if [[ ! -x ".venv/bin/python" ]]; then
 fi
 
 .venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m pip install -r requirements-build.txt
 .venv/bin/python -m pytest
 .venv/bin/pyinstaller --clean --noconfirm club_compras_macos.spec

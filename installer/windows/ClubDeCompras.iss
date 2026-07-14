@@ -4,7 +4,7 @@
 
 #define MyAppName "Bella Vita - Club de Compras"
 #define MyAppPublisher "Bella Vita"
-#define MyAppExeName "Club de Compras.exe"
+#define MyAppExeName "ClubDeCompras.exe"
 #define MyAppDirName "Bella Vita\Club de Compras"
 
 [Setup]
@@ -22,13 +22,14 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 CloseApplications=yes
 RestartApplications=no
 InfoAfterFile=datos_conservados.txt
 
 [Files]
-Source: "..\..\dist\Club de Compras\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\..\dist\ClubDeCompras\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Tasks]
 Name: "desktopicon"; Description: "Crear acceso directo en el escritorio"; GroupDescription: "Accesos directos:"; Flags: unchecked

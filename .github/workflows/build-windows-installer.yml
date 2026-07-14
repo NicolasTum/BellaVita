@@ -1,4 +1,4 @@
-name: Build Windows installer
+name: Build Windows Installer
 
 on:
   workflow_dispatch:
@@ -19,30 +19,106 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Show Python version
+        shell: pwsh
+        run: python --version
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install --upgrade pip
+          .\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
+
+      - name: Read application version
+        id: app_version
+        shell: pwsh
+        run: |
+          $Version = .\.venv\Scripts\python.exe -c "from app.version import VERSION; print(VERSION)"
+          "version=$Version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Run pytest
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m pytest
+
+      - name: Build with PyInstaller
+        shell: pwsh
+        run: .\.venv\Scripts\pyinstaller.exe --clean --noconfirm club_compras_windows.spec
+
+      - name: Verify PyInstaller output
+        shell: pwsh
+        run: |
+          $AppDir = "dist\ClubDeCompras"
+          $AppExe = Join-Path $AppDir "ClubDeCompras.exe"
+          if (-not (Test-Path $AppExe)) {
+            throw "Executable not found: $AppExe"
+          }
+          $DatabaseFiles = Get-ChildItem $AppDir -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.Extension -in @(".db", ".sqlite", ".sqlite3") }
+          if ($DatabaseFiles) {
+            $Names = ($DatabaseFiles | ForEach-Object { $_.FullName }) -join ", "
+            throw "Packaged database files found: $Names"
+          }
+
+      - name: Smoke test executable
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $Process = Start-Process "dist\ClubDeCompras\ClubDeCompras.exe" -PassThru
+          Start-Sleep -Seconds 8
+          if ($Process.HasExited) {
+            throw "ClubDeCompras.exe exited during smoke test with code $($Process.ExitCode)"
+          }
+          Stop-Process -Id $Process.Id -Force
+
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup -y --no-progress
 
-      - name: Build app and installer
+      - name: Locate Inno Setup compiler
+        id: iscc
         shell: pwsh
-        env:
-          ISCC_EXE: C:\Program Files (x86)\Inno Setup 6\ISCC.exe
-        run: .\scripts\build_windows.ps1
+        run: |
+          $Candidates = @(
+            "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+            "C:\Program Files\Inno Setup 6\ISCC.exe"
+          )
+          $Iscc = $null
+          foreach ($Candidate in $Candidates) {
+            if (Test-Path $Candidate) {
+              $Iscc = $Candidate
+              break
+            }
+          }
+          if (-not $Iscc) {
+            $Command = Get-Command "ISCC.exe" -ErrorAction SilentlyContinue
+            if ($Command) {
+              $Iscc = $Command.Source
+            }
+          }
+          if (-not $Iscc) {
+            throw "ISCC.exe was not found after installing Inno Setup."
+          }
+          "path=$Iscc" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          & "${{ steps.iscc.outputs.path }}" "/DMyAppVersion=${{ steps.app_version.outputs.version }}" "installer\windows\ClubDeCompras.iss"
 
       - name: Verify installer
         shell: pwsh
         run: |
-          $Version = .\.venv\Scripts\python.exe -c "from app.version import VERSION; print(VERSION)"
-          $Installer = "dist\installer\BellaVita_ClubDeCompras_Setup_$Version.exe"
+          $Installer = "dist\installer\BellaVita_ClubDeCompras_Setup_${{ steps.app_version.outputs.version }}.exe"
           if (-not (Test-Path $Installer)) {
             throw "Installer not found: $Installer"
           }
           Write-Host "Installer ready: $Installer"
 
-      - name: Upload Windows installer artifact
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: BellaVita-ClubDeCompras-Windows-Installer
-          path: dist/installer/BellaVita_ClubDeCompras_Setup_*.exe
+          path: dist/installer/BellaVita_ClubDeCompras_Setup_${{ steps.app_version.outputs.version }}.exe
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30

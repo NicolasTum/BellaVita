@@ -32,8 +32,8 @@ VSVersionInfo(
           StringStruct('CompanyName', 'Bella Vita'),
           StringStruct('FileDescription', 'Bella Vita - Club de Compras'),
           StringStruct('FileVersion', '{app_version}'),
-          StringStruct('InternalName', 'Club de Compras'),
-          StringStruct('OriginalFilename', 'Club de Compras.exe'),
+          StringStruct('InternalName', 'ClubDeCompras'),
+          StringStruct('OriginalFilename', 'ClubDeCompras.exe'),
           StringStruct('ProductName', 'Bella Vita - Club de Compras'),
           StringStruct('ProductVersion', '{app_version}')
         ]
@@ -88,7 +88,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="Club de Compras",
+    name="ClubDeCompras",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -109,5 +109,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name="Club de Compras",
+    name="ClubDeCompras",
 )
