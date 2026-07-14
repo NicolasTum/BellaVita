@@ -43,6 +43,7 @@ Implementado en desarrollo:
 
 - Navegacion principal con pantallas reales y boton volver.
 - Alta de clientes con validaciones.
+- Fecha de nacimiento opcional para clientes, con validacion y uso promocional por cumpleaños.
 - Busqueda de clientes mientras se escribe.
 - Ficha completa basica del cliente.
 - Edicion de clientes.
@@ -68,6 +69,7 @@ Implementado en desarrollo:
 - Cantidad objetivo de compras por ciclo configurable; cada ciclo conserva su propio objetivo.
 - Pantalla de configuracion clara para compras necesarias por ciclo, con valor visible entre 1 y 50.
 - Datos generales de tienda y correo promocional preparados para integraciones futuras.
+- Filtros y exportacion CSV para campañas de cumpleaños.
 - Respaldos manuales y automaticos con SQLite backup API, integridad, limpieza y restauracion segura.
 - Carpeta de respaldo configurable, apta para una carpeta local o sincronizada por Google Drive.
 - Pie de version discreto en el panel principal.
@@ -140,6 +142,7 @@ La base de datos real, backups, logs, exportaciones, `.env` y credenciales estan
 Migraciones actuales:
 
 - `loyalty_cycles.target_purchase_count`: guarda el objetivo de compras de cada ciclo.
+- `customers.birth_date`: fecha de nacimiento opcional, sin hora, para promociones de cumpleaños.
 - `purchases.sticker_number`: permite objetivos configurables mayores a 6.
 - `backup_logs`: registra respaldos, restauraciones, errores y limpiezas.
 - `app_settings`: guarda promocion, tienda, moneda, datos de correo promocional y carpeta de respaldo.
@@ -167,6 +170,24 @@ club_compras_YYYY-MM-DD_HHMMSS.db
 El respaldo usa la API segura de SQLite, verifica integridad antes y despues de copiar, audita el resultado y conserva inicialmente las ultimas 30 copias sin borrar nunca la unica copia existente. Tambien se crean respaldos automaticos al cerrar correctamente la aplicacion y despues de compras, canjes de premios o cambios de configuracion, con un maximo aproximado de uno cada 30 minutos.
 
 La restauracion verifica el archivo elegido y crea antes una copia de seguridad de la base actual. Despues de restaurar, cerrar y abrir nuevamente la aplicacion.
+
+## Promociones de cumpleaños
+
+Los clientes pueden tener una fecha de nacimiento opcional. El formulario permite dejarla sin informar, cargarla con calendario o limpiarla. No se guarda la fecha actual por defecto.
+
+El servicio `app.services.birthday_promotions.BirthdayPromotionService` permite filtrar:
+
+- Cumpleaños de hoy.
+- Cumpleaños de esta semana.
+- Cumpleaños del mes actual o un mes seleccionado.
+- Cumpleaños del proximo mes.
+- Rango de meses.
+- Clientes con o sin fecha de nacimiento.
+- Clientes activos con consentimiento promocional, cuando la campaña lo requiere.
+
+La exportacion CSV para campañas incluye nombre, apellido, fecha de nacimiento, dia, mes, telefono, correo, consentimiento, ultima compra y premios disponibles.
+
+Ver [docs/promociones_cumpleanos.md](docs/promociones_cumpleanos.md).
 
 ## GitHub
 

@@ -22,6 +22,7 @@ Fecha de auditoria: 2026-07-12
 | Tabla | Cambio | Motivo |
 |---|---|---|
 | `loyalty_cycles` | `target_purchase_count INTEGER NOT NULL DEFAULT 6` | Conservar el objetivo de compras de cada ciclo aunque cambie la configuracion futura |
+| `customers` | `birth_date TEXT NULL` | Guardar fecha de nacimiento opcional sin hora para promociones de cumpleaños |
 | `purchases` | Rebuild compatible del check de `sticker_number` a `>= 1` | Permitir ciclos nuevos con mas de 6 stickers |
 | `purchase_items` | Rebuild de FK si apuntaba a tabla legacy durante migracion SQLite | Mantener integridad al migrar bases existentes |
 | `backup_logs` | Columnas `reason`, `error` y `restored_from` | Registrar respaldos, restauraciones, errores y limpieza |
@@ -60,6 +61,7 @@ Fecha de auditoria: 2026-07-12
 | Placeholder | Volver | `app/ui/main_window.py` | Regresar a la pantalla anterior | Funcional |
 | Dialogo cliente | Guardar cliente/cambios | `app/ui/customer_dialog.py` | Validar, detectar duplicados y persistir | Funcional |
 | Dialogo cliente | Cancelar | `app/ui/customer_dialog.py` | Cerrar sin cambios | Funcional |
+| Dialogo cliente | Fecha de nacimiento | `app/ui/customer_dialog.py` | Cargar fecha opcional con calendario, no informar o limpiar fecha | Funcional |
 
 ## Estado despues de Fase 3 y Fase 4
 
@@ -114,6 +116,17 @@ Fecha de auditoria: 2026-07-12
 | Configuracion | Guardar cambios | `app/services/settings.py` | Validar, persistir en `app_settings` y auditar | Funcional |
 | Panel principal | Pie de version | `app/ui/main_window.py` | Mostrar texto discreto no clickeable con version centralizada | Funcional |
 | Panel principal | Acerca de | `app/ui/main_window.py` | No mostrar boton de acerca de | Eliminado |
+| Panel principal | Cumpleaños este mes | `app/repositories/dashboard.py`, `app/ui/main_window.py` | Contar clientes activos con cumpleaños en el mes actual y listar proximos cumpleaños | Funcional |
+
+## Estado despues de fecha de nacimiento y promociones
+
+| Modulo | Archivo | Accion esperada | Estado actual |
+|---|---|---|---|
+| Clientes | `app/repositories/customers.py`, `app/services/customers.py` | Crear, editar, limpiar y persistir `birth_date` opcional | Funcional |
+| Migracion | `app/database/schema.py` | Agregar `birth_date` si falta sin perder clientes existentes | Funcional e idempotente |
+| Ficha de cliente | `app/ui/main_window.py` | Mostrar fecha de nacimiento o `No informada` y mes de cumpleaños | Funcional |
+| Promociones cumpleaños | `app/services/birthday_promotions.py` | Filtrar por hoy, semana, mes, proximo mes, rango y consentimiento | Funcional |
+| Exportacion campañas | `app/services/birthday_promotions.py` | Exportar CSV mensual con fecha, dia, mes y datos de contacto | Funcional |
 
 ## Estado despues de respaldos y restauracion
 
@@ -188,6 +201,7 @@ Cobertura funcional actual de pruebas:
 - `target_purchase_count` guardado por ciclo.
 - Flujo post-compra vuelve a registro vacío y enfoca buscador.
 - Configuracion muestra claramente compras necesarias para obtener el premio.
+- Fecha de nacimiento opcional, validaciones, migracion y filtros de cumpleaños.
 - Respaldos manuales, carpeta no disponible, limpieza y restauracion.
 - Auditoria de respaldo y restauracion.
 - Eliminacion del boton `Acerca de` y pie de version no clickeable.
@@ -229,6 +243,11 @@ Flujo probado:
 23. Crear copia genera un archivo `club_compras_YYYY-MM-DD_HHMMSS.db`.
 24. Restaurar copia valida integridad y crea copia previa.
 25. El panel principal ya no muestra boton `Acerca de`; muestra pie de version discreto.
+26. Nuevo cliente permite guardar sin fecha de nacimiento.
+27. Editar cliente permite agregar y limpiar fecha de nacimiento.
+28. Ficha de cliente muestra fecha o `No informada` y mes de cumpleaños.
+29. Servicio de promociones filtra cumpleaños por dia, semana, mes y consentimiento.
+30. Exportacion CSV de cumpleaños incluye fecha y mes.
 
 Flujo manual controlado de Fase 3/4:
 
@@ -248,6 +267,6 @@ Flujo manual controlado de Fase 3/4:
 | Fase 4 - Carton | Seis stickers, promedio parcial, completar ciclo y premio | Completada |
 | Fase 5 - Premios | Listado, ficha, canje, validaciones y doble canje | Completada |
 | Fase 6 - Historial y correcciones | Compras, ciclos, premios, anulacion, auditoria | Parcial: historial basico completado; correcciones/anulaciones pendientes |
-| Fase 7 - Reportes | Filtros, metricas, exportacion CSV/Excel | Pendiente |
+| Fase 7 - Reportes | Filtros, metricas, exportacion CSV/Excel | Parcial: exportacion CSV de cumpleaños implementada |
 | Fase 8 - Configuracion y seguridad | Usuarios, roles, promociones, moneda, backups, auditoria | Parcial: configuracion admin y auditoria de respaldos implementadas; usuarios/roles avanzados pendientes |
 | Fase 9 - Backups | Crear/restaurar, Google Drive, ultimo backup | Completada para carpeta local o sincronizada |

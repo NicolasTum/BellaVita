@@ -41,6 +41,7 @@ from app.ui.loyalty_card_page import LoyaltyCardPage
 from app.ui.purchase_page import PurchasePage
 from app.ui.rewards_page import RewardsPage
 from app.ui.settings_page import SettingsPage
+from app.utils.dates import birthday_month_name, format_birth_date
 from app.utils.money import format_money, money_from_db
 from app.utils.paths import database_path, resource_path
 
@@ -142,6 +143,9 @@ class MainWindow(QMainWindow):
         self.dashboard_label.setObjectName("DetailInfo")
         self.dashboard_label.setAlignment(Qt.AlignCenter)
         self.dashboard_label.setWordWrap(True)
+        self.birthdays_label = QLabel()
+        self.birthdays_label.setObjectName("DetailInfo")
+        self.birthdays_label.setWordWrap(True)
 
         buttons = [
             ("Buscar cliente", self._show_customer_search),
@@ -168,6 +172,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(brand_header)
         layout.addSpacing(12)
         layout.addWidget(self.dashboard_label)
+        layout.addWidget(self.birthdays_label)
         layout.addSpacing(20)
         layout.addLayout(grid)
         layout.addStretch(2)
@@ -344,9 +349,19 @@ class MainWindow(QMainWindow):
                     f"Valor total de premios disponibles: {format_money(stats.rewards_available_value)}",
                     f"Premios utilizados: {stats.rewards_used}",
                     f"Ciclos a 1 compra: {stats.cycles_near_completion}",
+                    f"Cumpleaños este mes: {stats.birthdays_this_month}",
                 ]
             )
         )
+        if stats.upcoming_birthdays:
+            lines = ["Próximos cumpleaños:"]
+            for name, day_month, phone, email, consent in stats.upcoming_birthdays:
+                contact = phone or email or "-"
+                consent_text = "con consentimiento" if consent else "sin consentimiento"
+                lines.append(f"{name} · {day_month} · {contact} · {consent_text}")
+            self.birthdays_label.setText("\n".join(lines))
+        else:
+            self.birthdays_label.setText("Próximos cumpleaños: sin fechas cargadas.")
 
     def _show_customer_search(self) -> None:
         self._refresh_customer_table()
@@ -405,6 +420,8 @@ class MainWindow(QMainWindow):
                 [
                     f"Telefono: {customer.phone or '-'}",
                     f"Correo: {customer.email or '-'}",
+                    f"Fecha de nacimiento: {format_birth_date(customer.birth_date)}",
+                    f"Mes de cumpleaños: {birthday_month_name(customer.birth_date)}",
                     f"Estado: {'Activo' if customer.is_active else 'Inactivo'}",
                     f"Consentimiento promociones: {'Si' if customer.marketing_consent else 'No'}",
                     f"Alta: {customer.created_at}",

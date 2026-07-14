@@ -11,6 +11,7 @@ class CustomerCreate:
     last_name: str
     phone: str | None = None
     email: str | None = None
+    birth_date: str | None = None
     notes: str | None = None
     marketing_consent: bool = False
 
@@ -32,6 +33,7 @@ class CustomerRecord:
     last_name: str
     phone: str | None
     email: str | None
+    birth_date: str | None
     notes: str | None
     is_active: bool
     marketing_consent: bool
@@ -63,17 +65,19 @@ class CustomerRepository:
                     last_name,
                     phone,
                     email,
+                    birth_date,
                     notes,
                     marketing_consent,
                     marketing_consent_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END)
+                VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END)
                 """,
                 (
                     customer.first_name,
                     customer.last_name,
                     customer.phone,
                     customer.email,
+                    customer.birth_date,
                     customer.notes,
                     1 if customer.marketing_consent else 0,
                     1 if customer.marketing_consent else 0,
@@ -99,6 +103,7 @@ class CustomerRepository:
                     last_name = ?,
                     phone = ?,
                     email = ?,
+                    birth_date = ?,
                     notes = ?,
                     marketing_consent = ?,
                     marketing_consent_at = CASE
@@ -114,6 +119,7 @@ class CustomerRepository:
                     customer.last_name,
                     customer.phone,
                     customer.email,
+                    customer.birth_date,
                     customer.notes,
                     1 if customer.marketing_consent else 0,
                     1 if customer.marketing_consent else 0,
@@ -162,6 +168,7 @@ class CustomerRepository:
                     c.last_name,
                     c.phone,
                     c.email,
+                    c.birth_date,
                     c.notes,
                     c.is_active,
                     c.marketing_consent,
@@ -244,6 +251,7 @@ class CustomerRepository:
                     c.last_name,
                     c.phone,
                     c.email,
+                    c.birth_date,
                     c.notes,
                     c.is_active,
                     c.marketing_consent,
@@ -333,15 +341,16 @@ class CustomerRepository:
             last_name=row[2],
             phone=row[3],
             email=row[4],
-            notes=row[5],
-            is_active=bool(row[6]),
-            marketing_consent=bool(row[7]),
-            created_at=row[8],
-            current_stickers=row[9],
-            available_rewards=row[10],
-            last_purchase_at=row[11],
-            current_cycle_total=str(row[12]),
-            current_cycle_average=str(row[13]),
-            current_cycle_target=row[14],
-            completed_cycles=row[15],
+            birth_date=row[5],
+            notes=row[6],
+            is_active=bool(row[7]),
+            marketing_consent=bool(row[8]),
+            created_at=row[9],
+            current_stickers=row[10],
+            available_rewards=row[11],
+            last_purchase_at=row[12],
+            current_cycle_total=str(row[13]),
+            current_cycle_average=str(row[14]),
+            current_cycle_target=row[15],
+            completed_cycles=row[16],
         )

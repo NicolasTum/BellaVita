@@ -173,6 +173,16 @@ def _apply_compatible_upgrades(connection: sqlite3.Connection) -> None:
     if "operation_id" not in purchase_columns:
         connection.execute("ALTER TABLE purchases ADD COLUMN operation_id TEXT")
 
+    customer_columns = _column_names(connection, "customers")
+    if "birth_date" not in customer_columns:
+        connection.execute("ALTER TABLE customers ADD COLUMN birth_date TEXT")
+        connection.execute(
+            """
+            INSERT INTO audit_logs (action, entity, new_value, reason)
+            VALUES ('MIGRATION_APPLIED', 'customers', 'birth_date', 'Added optional customer birth date')
+            """
+        )
+
     connection.execute(
         """
         CREATE UNIQUE INDEX IF NOT EXISTS idx_purchases_operation_id
