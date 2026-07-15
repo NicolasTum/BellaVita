@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import shutil
 import sqlite3
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -21,6 +22,26 @@ DEFAULT_KEEP_COUNT = 30
 
 class BackupError(RuntimeError):
     pass
+
+
+def delete_backup_file(path: Path, retries: int = 3, delay_seconds: float = 0.1) -> bool:
+    attempts = max(1, retries)
+    for attempt in range(1, attempts + 1):
+        try:
+            path.unlink()
+            return True
+        except (PermissionError, OSError) as exc:
+            LOGGER.warning(
+                "Could not delete backup %s on attempt %s/%s: %s",
+                path,
+                attempt,
+                attempts,
+                exc,
+            )
+            if attempt == attempts:
+                raise BackupError(f"No se pudo eliminar la copia de seguridad {path}: {exc}") from exc
+            time.sleep(delay_seconds)
+    return False
 
 
 @dataclass(frozen=True)
@@ -96,8 +117,13 @@ class BackupService:
         target = folder or self.backup_folder()
         if not target.exists() or not target.is_dir():
             return []
+        active_database = self._database_path.resolve()
         return sorted(
-            target.glob(f"{BACKUP_PREFIX}*{BACKUP_SUFFIX}"),
+            (
+                path
+                for path in target.glob(f"{BACKUP_PREFIX}*{BACKUP_SUFFIX}")
+                if path.is_file() and path.resolve() != active_database
+            ),
             key=lambda path: path.stat().st_mtime,
             reverse=True,
         )
@@ -175,9 +201,9 @@ class BackupService:
         deleted: list[Path] = []
         for path in to_delete:
             try:
-                path.unlink()
-                deleted.append(path)
-            except OSError as exc:
+                if delete_backup_file(path):
+                    deleted.append(path)
+            except BackupError as exc:
                 LOGGER.warning("Could not delete old backup %s: %s", path, exc)
         if deleted:
             self._record_backup_log(
@@ -226,17 +252,18 @@ class BackupService:
         except Exception as exc:
             if backup_path.exists():
                 try:
-                    backup_path.unlink()
-                except OSError:
-                    LOGGER.warning("Could not remove failed backup %s", backup_path)
+                    delete_backup_file(backup_path)
+                except BackupError as cleanup_exc:
+                    LOGGER.warning("Could not remove failed backup %s: %s", backup_path, cleanup_exc)
             self._record_failure(backup_path, reason, exc, user_id)
             if isinstance(exc, BackupError):
                 raise
             raise BackupError(str(exc)) from exc
 
     def _should_create_automatic_backup(self) -> bool:
-        with sqlite3.connect(self._database_path) as connection:
-            row = connection.execute(
+        connection = sqlite3.connect(self._database_path)
+        try:
+            cursor = connection.execute(
                 """
                 SELECT created_at
                 FROM backup_logs
@@ -245,8 +272,12 @@ class BackupService:
                 ORDER BY created_at DESC
                 LIMIT 1
                 """
-            ).fetchone()
-            today = connection.execute(
+            )
+            try:
+                row = cursor.fetchone()
+            finally:
+                cursor.close()
+            cursor = connection.execute(
                 """
                 SELECT created_at
                 FROM backup_logs
@@ -255,7 +286,13 @@ class BackupService:
                   AND date(created_at) = date(CURRENT_TIMESTAMP)
                 LIMIT 1
                 """
-            ).fetchone()
+            )
+            try:
+                today = cursor.fetchone()
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
         if not row:
             return True
         last = self._parse_sqlite_timestamp(row[0])
@@ -264,8 +301,9 @@ class BackupService:
         return today is None
 
     def _last_successful_backup(self) -> str | None:
-        with sqlite3.connect(self._database_path) as connection:
-            row = connection.execute(
+        connection = sqlite3.connect(self._database_path)
+        try:
+            cursor = connection.execute(
                 """
                 SELECT created_at
                 FROM backup_logs
@@ -273,7 +311,13 @@ class BackupService:
                 ORDER BY created_at DESC
                 LIMIT 1
                 """
-            ).fetchone()
+            )
+            try:
+                row = cursor.fetchone()
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
         return row[0] if row else None
 
     def _record_failure(self, path: Path, reason: str, exc: Exception, user_id: int | None) -> None:
@@ -291,14 +335,19 @@ class BackupService:
         error: str | None = None,
         restored_from: str | None = None,
     ) -> None:
-        with sqlite3.connect(self._database_path) as connection:
-            connection.execute(
+        connection = sqlite3.connect(self._database_path)
+        try:
+            cursor = connection.execute(
                 """
                 INSERT INTO backup_logs (path, status, message, reason, error, restored_from)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (path, status, message, reason, error, restored_from),
             )
+            cursor.close()
+            connection.commit()
+        finally:
+            connection.close()
 
     def _audit(
         self,
@@ -308,26 +357,43 @@ class BackupService:
         result: str,
         restored_from: str | None = None,
     ) -> None:
-        with sqlite3.connect(self._database_path) as connection:
-            connection.execute(
+        connection = sqlite3.connect(self._database_path)
+        try:
+            cursor = connection.execute(
                 """
                 INSERT INTO audit_logs (user_id, action, entity, new_value, reason)
                 VALUES (?, ?, 'backups', ?, ?)
                 """,
                 (user_id, action, f"path={path};restored_from={restored_from or ''}", result),
             )
+            cursor.close()
+            connection.commit()
+        finally:
+            connection.close()
 
     @staticmethod
     def _sqlite_backup(source: Path, destination: Path) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(source) as source_connection:
-            with sqlite3.connect(destination) as destination_connection:
-                source_connection.backup(destination_connection)
+        source_connection = sqlite3.connect(source)
+        destination_connection = sqlite3.connect(destination)
+        try:
+            source_connection.backup(destination_connection)
+            destination_connection.commit()
+        finally:
+            destination_connection.close()
+            source_connection.close()
 
     @staticmethod
     def _assert_integrity(path: Path) -> None:
-        with sqlite3.connect(path) as connection:
-            result = connection.execute("PRAGMA integrity_check").fetchone()[0]
+        connection = sqlite3.connect(path)
+        try:
+            cursor = connection.execute("PRAGMA integrity_check")
+            try:
+                result = cursor.fetchone()[0]
+            finally:
+                cursor.close()
+        finally:
+            connection.close()
         if result != "ok":
             raise BackupError(f"Integridad SQLite inválida: {result}")
 
