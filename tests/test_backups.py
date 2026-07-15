@@ -8,7 +8,13 @@ import pytest
 
 from app.database.schema import initialize_database
 from app.repositories.settings import SettingsRepository
-from app.services.backups import BackupError, BackupService, delete_backup_file
+from app.services.backups import (
+    BackupError,
+    BackupService,
+    backup_sort_key,
+    delete_backup_file,
+    parse_backup_timestamp,
+)
 
 
 def _customer_count(db_path) -> int:
@@ -160,6 +166,56 @@ def test_cleanup_deletes_oldest_backups_and_reports_only_deleted_paths(tmp_path)
     assert set(deleted).isdisjoint(remaining)
     assert paths[0] in deleted
     assert paths[1] in deleted
+    assert paths[2] in deleted
+    assert paths[3] not in deleted
+    assert source not in deleted
+
+
+def test_backup_sorting_uses_name_timestamp_before_mtime(tmp_path) -> None:
+    newer_by_name = tmp_path / "club_compras_2026-07-15_005457.db"
+    older_by_name = tmp_path / "club_compras_2026-07-13_204510.db"
+    newer_by_name.write_text("newer")
+    older_by_name.write_text("older")
+    old_mtime = 1_700_000_000
+    new_mtime = 1_800_000_000
+    newer_by_name.touch()
+    older_by_name.touch()
+    import os
+
+    os.utime(newer_by_name, (old_mtime, old_mtime))
+    os.utime(older_by_name, (new_mtime, new_mtime))
+
+    assert sorted([newer_by_name, older_by_name], key=backup_sort_key) == [
+        older_by_name,
+        newer_by_name,
+    ]
+
+
+def test_backup_sorting_is_deterministic_with_equal_mtimes_and_invalid_names(tmp_path) -> None:
+    first = tmp_path / "club_compras_manual_a.db"
+    second = tmp_path / "club_compras_manual_b.db"
+    first.write_text("a")
+    second.write_text("b")
+    import os
+
+    same_mtime = 1_700_000_000
+    os.utime(first, (same_mtime, same_mtime))
+    os.utime(second, (same_mtime, same_mtime))
+
+    assert parse_backup_timestamp(first) is None
+    assert sorted([second, first], key=backup_sort_key) == [first, second]
+
+
+def test_parse_backup_timestamp_returns_none_for_invalid_names(tmp_path) -> None:
+    valid = tmp_path / "club_compras_2026-07-13_204511.db"
+    invalid_prefix = tmp_path / "other_2026-07-13_204511.db"
+    invalid_date = tmp_path / "club_compras_2026-99-13_204511.db"
+    invalid_suffix = tmp_path / "club_compras_2026-07-13_204511.sqlite"
+
+    assert parse_backup_timestamp(valid).isoformat() == "2026-07-13T20:45:11"
+    assert parse_backup_timestamp(invalid_prefix) is None
+    assert parse_backup_timestamp(invalid_date) is None
+    assert parse_backup_timestamp(invalid_suffix) is None
 
 
 def test_delete_backup_file_retries_temporary_lock(tmp_path, monkeypatch) -> None:

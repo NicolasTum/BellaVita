@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import shutil
 import sqlite3
 import time
@@ -16,6 +17,7 @@ from app.utils.paths import backup_dir
 LOGGER = logging.getLogger(__name__)
 BACKUP_PREFIX = "club_compras_"
 BACKUP_SUFFIX = ".db"
+BACKUP_NAME_PATTERN = re.compile(r"^club_compras_(\d{4}-\d{2}-\d{2}_\d{6})\.db$")
 AUTO_BACKUP_INTERVAL = timedelta(minutes=30)
 DEFAULT_KEEP_COUNT = 30
 
@@ -42,6 +44,23 @@ def delete_backup_file(path: Path, retries: int = 3, delay_seconds: float = 0.1)
                 raise BackupError(f"No se pudo eliminar la copia de seguridad {path}: {exc}") from exc
             time.sleep(delay_seconds)
     return False
+
+
+def parse_backup_timestamp(path: Path) -> datetime | None:
+    match = BACKUP_NAME_PATTERN.fullmatch(path.name)
+    if not match:
+        return None
+    try:
+        return datetime.strptime(match.group(1), "%Y-%m-%d_%H%M%S")
+    except ValueError:
+        return None
+
+
+def backup_sort_key(path: Path) -> tuple[datetime, str]:
+    timestamp = parse_backup_timestamp(path)
+    if timestamp is None:
+        timestamp = datetime.fromtimestamp(path.stat().st_mtime)
+    return timestamp, path.name
 
 
 @dataclass(frozen=True)
@@ -124,7 +143,7 @@ class BackupService:
                 for path in target.glob(f"{BACKUP_PREFIX}*{BACKUP_SUFFIX}")
                 if path.is_file() and path.resolve() != active_database
             ),
-            key=lambda path: path.stat().st_mtime,
+            key=backup_sort_key,
             reverse=True,
         )
 
@@ -191,12 +210,12 @@ class BackupService:
         return RestoreResult(restored_from=path, safety_backup_path=safety.path)
 
     def cleanup_old_backups(self, keep_count: int = DEFAULT_KEEP_COUNT, user_id: int | None = None) -> list[Path]:
-        backups = self.available_backups()
+        backups = sorted(self.available_backups(), key=backup_sort_key)
         if len(backups) <= max(1, keep_count):
             return []
-        to_delete = backups[keep_count:]
+        to_delete = backups[: len(backups) - keep_count]
         if len(backups) - len(to_delete) < 1:
-            to_delete = backups[1:]
+            to_delete = backups[:-1]
 
         deleted: list[Path] = []
         for path in to_delete:
