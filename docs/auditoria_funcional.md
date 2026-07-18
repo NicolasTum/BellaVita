@@ -118,6 +118,7 @@ Fecha de auditoria: 2026-07-12
 | Panel principal | Acerca de | `app/ui/main_window.py` | No mostrar boton de acerca de | Eliminado |
 | Panel principal | Cumpleaños este mes | `app/repositories/dashboard.py`, `app/ui/main_window.py` | Mostrar tarjeta clickeable con cantidad de clientes activos con cumpleaños y consentimiento, sin datos personales ni contador duplicado | Funcional |
 | Panel principal | Cumpleaños | `app/ui/main_window.py`, `app/ui/birthdays_page.py` | Abrir listado mensual desde la tarjeta unica, con busqueda, acciones y exportacion CSV | Funcional |
+| Configuracion | Importar clientes | `app/ui/csv_import_page.py`, `app/services/csv_import.py` | Analizar CSV, mostrar vista previa, importar clientes/compras historicas y generar reporte | Funcional |
 
 ## Estado despues de fecha de nacimiento y promociones
 
@@ -253,6 +254,7 @@ Flujo probado:
 29. Servicio de promociones filtra cumpleaños por dia, semana, mes, cliente activo y consentimiento.
 30. Exportacion CSV de cumpleaños incluye fecha y mes, sin columna visible de consentimiento.
 31. `Cumpleaños` muestra una lista completa, buscable y exportable desde el panel principal.
+32. `Importar clientes` permite carga masiva CSV con plantilla, vista previa, control de duplicados, compras historicas y auditoria.
 
 Flujo manual controlado de Fase 3/4:
 

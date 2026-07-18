@@ -30,8 +30,12 @@ DEFAULT_ADMIN_USER = CurrentUser(id=None, username="admin", role="admin")
 
 class SettingsService:
     def __init__(self, database_path: Path, current_user: CurrentUser = DEFAULT_ADMIN_USER) -> None:
+        self._database_path = database_path
         self._repository = SettingsRepository(database_path)
         self._current_user = current_user
+
+    def database_path(self) -> Path:
+        return self._database_path
 
     def current_user(self) -> CurrentUser:
         return self._current_user

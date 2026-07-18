@@ -72,6 +72,7 @@ Implementado en desarrollo:
 - Tarjeta clickeable de cumpleaños del mes en el panel principal, sin datos personales visibles ni accesos duplicados.
 - Pantalla `Cumpleaños` para revisar clientes del mes, buscar, ver contactos, premios disponibles y exportar CSV.
 - Acceso compacto a `Configuracion` en el encabezado del panel principal, visible solo para administradores.
+- Importacion masiva de clientes y compras historicas desde CSV, con vista previa, validaciones, proteccion de duplicados y reporte.
 - Respaldos manuales y automaticos con SQLite backup API, integridad, limpieza y restauracion segura.
 - Carpeta de respaldo configurable, apta para una carpeta local o sincronizada por Google Drive.
 - Pie de version discreto en el panel principal.
@@ -194,6 +195,14 @@ El servicio `app.services.birthday_promotions.BirthdayPromotionService` permite 
 La exportacion CSV para campañas incluye nombre, apellido, fecha de nacimiento, dia, mes, telefono, correo, ultima compra y premios disponibles. No incluye una columna visible de consentimiento.
 
 Ver [docs/promociones_cumpleanos.md](docs/promociones_cumpleanos.md).
+
+## Importacion masiva
+
+Los administradores pueden importar clientes historicos desde `Configuracion > Importar clientes`.
+
+La plantilla CSV descargable incluye datos del cliente y hasta seis pares `Producto_X` / `Monto_X`. Nombre y telefono son obligatorios; el resto es opcional.
+
+Ver [docs/importacion_masiva_clientes.md](docs/importacion_masiva_clientes.md).
 
 ## GitHub
 

@@ -62,7 +62,7 @@ def test_customer_service_creates_customer(tmp_path) -> None:
     assert saved.marketing_consent is True
 
 
-def test_customer_requires_contact_method(tmp_path) -> None:
+def test_customer_requires_phone(tmp_path) -> None:
     db_path = tmp_path / "club_compras.db"
     initialize_database(db_path)
     service = CustomerService(db_path)
@@ -77,7 +77,7 @@ def test_customer_requires_contact_method(tmp_path) -> None:
             marketing_consent=False,
         )
     except CustomerValidationError as exc:
-        assert "teléfono o un correo" in str(exc)
+        assert "teléfono es obligatorio" in str(exc)
     else:
         raise AssertionError("Expected CustomerValidationError")
 
@@ -90,7 +90,7 @@ def test_customer_search_update_and_deactivate(tmp_path) -> None:
     customer = service.build_customer(
         first_name="Lucia",
         last_name="Silva",
-        phone="",
+        phone="091111110",
         email="lucia@example.com",
         notes="",
         marketing_consent=False,

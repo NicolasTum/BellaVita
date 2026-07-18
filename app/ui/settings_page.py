@@ -16,7 +16,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.services.csv_import import CsvImportService
 from app.services.settings import SettingsPermissionError, SettingsService, SettingsValidationError
+from app.ui.csv_import_page import CsvImportPage
 
 
 class SettingsPage(QWidget):
@@ -45,6 +47,13 @@ class SettingsPage(QWidget):
         self.tabs.addTab(self._promotion_tab(), "Promoción")
         self.tabs.addTab(self._email_tab(), "Correo de promociones")
         self.tabs.addTab(self._store_tab(), "Datos generales")
+        self.csv_import_page = CsvImportPage(
+            CsvImportService(
+                self._settings_service.database_path(),
+                self._settings_service.current_user(),
+            )
+        )
+        self.tabs.addTab(self.csv_import_page, "Importar clientes")
 
         actions = QHBoxLayout()
         save_button = QPushButton("Guardar cambios")

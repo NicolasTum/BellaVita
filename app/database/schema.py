@@ -134,6 +134,35 @@ CREATE TABLE IF NOT EXISTS backup_logs (
     error TEXT,
     restored_from TEXT
 );
+
+CREATE TABLE IF NOT EXISTS csv_import_batches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_name TEXT NOT NULL,
+    file_hash TEXT NOT NULL,
+    imported_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    user_id INTEGER REFERENCES users(id),
+    total_rows INTEGER NOT NULL DEFAULT 0,
+    customers_created INTEGER NOT NULL DEFAULT 0,
+    customers_updated INTEGER NOT NULL DEFAULT 0,
+    purchases_created INTEGER NOT NULL DEFAULT 0,
+    rows_skipped INTEGER NOT NULL DEFAULT 0,
+    rows_error INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL,
+    notes TEXT,
+    UNIQUE(file_hash)
+);
+
+CREATE TABLE IF NOT EXISTS csv_import_rows (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    batch_id INTEGER NOT NULL REFERENCES csv_import_batches(id),
+    row_number INTEGER NOT NULL,
+    customer_id INTEGER REFERENCES customers(id),
+    status TEXT NOT NULL,
+    message TEXT,
+    purchases_created INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(batch_id, row_number)
+);
 """
 
 

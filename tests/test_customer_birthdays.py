@@ -92,12 +92,21 @@ def test_rejects_future_and_too_old_birth_dates(tmp_path, birth_date: str) -> No
         _service(db_path).build_customer("Mala", "Fecha", "099111222", "", "", True, birth_date=birth_date)
 
 
-def test_rejects_birth_date_without_marketing_consent(tmp_path) -> None:
+def test_allows_birth_date_without_marketing_consent(tmp_path) -> None:
     db_path = tmp_path / "club.db"
     initialize_database(db_path)
 
-    with pytest.raises(CustomerValidationError, match="debe aceptar recibir promociones"):
-        _service(db_path).build_customer("Sin", "Consentimiento", "099111222", "", "", False, birth_date="1985-08-14")
+    customer = _service(db_path).build_customer(
+        "Sin",
+        "Consentimiento",
+        "099111222",
+        "",
+        "",
+        False,
+        birth_date="1985-08-14",
+    )
+
+    assert customer.birth_date == "1985-08-14"
 
 
 def test_birth_date_migration_is_idempotent_and_preserves_existing_clients(tmp_path) -> None:
@@ -238,11 +247,11 @@ def test_customer_dialog_birth_date_is_empty_by_default(tmp_path) -> None:
 
     assert dialog.birth_date_empty_input.isChecked() is True
     assert dialog._birth_date_value() == ""
-    assert dialog.birth_date_empty_input.isEnabled() is False
+    assert dialog.birth_date_empty_input.isEnabled() is True
     assert dialog.birth_date_input.isEnabled() is False
 
 
-def test_customer_dialog_birth_date_enables_only_with_consent(tmp_path) -> None:
+def test_customer_dialog_birth_date_enables_when_date_is_informed(tmp_path) -> None:
     app = _app()
     db_path = tmp_path / "club.db"
     initialize_database(db_path)
@@ -250,48 +259,10 @@ def test_customer_dialog_birth_date_enables_only_with_consent(tmp_path) -> None:
     dialog.show()
     app.processEvents()
 
-    dialog.marketing_consent_input.setChecked(True)
     dialog.birth_date_empty_input.setChecked(False)
     app.processEvents()
 
-    assert dialog.birth_date_empty_input.isEnabled() is True
     assert dialog.birth_date_input.isEnabled() is True
-
-
-def test_customer_dialog_revoke_consent_no_keeps_date_and_consent(tmp_path, monkeypatch) -> None:
-    app = _app()
-    db_path = tmp_path / "club.db"
-    initialize_database(db_path)
-    customer_id = _create_customer(db_path, "ConFecha", "1985-08-14", consent=True)
-    customer = CustomerService(db_path).get_customer(customer_id)
-    dialog = CustomerDialog(CustomerService(db_path), customer=customer)
-    monkeypatch.setattr("app.ui.customer_dialog.QMessageBox.question", lambda *args, **kwargs: QMessageBox.No)
-    dialog.show()
-    app.processEvents()
-
-    dialog.marketing_consent_input.setChecked(False)
-    app.processEvents()
-
-    assert dialog.marketing_consent_input.isChecked() is True
-    assert dialog._birth_date_value() == "1985-08-14"
-
-
-def test_customer_dialog_revoke_consent_yes_clears_date(tmp_path, monkeypatch) -> None:
-    app = _app()
-    db_path = tmp_path / "club.db"
-    initialize_database(db_path)
-    customer_id = _create_customer(db_path, "ConFecha", "1985-08-14", consent=True)
-    customer = CustomerService(db_path).get_customer(customer_id)
-    dialog = CustomerDialog(CustomerService(db_path), customer=customer)
-    monkeypatch.setattr("app.ui.customer_dialog.QMessageBox.question", lambda *args, **kwargs: QMessageBox.Yes)
-    dialog.show()
-    app.processEvents()
-
-    dialog.marketing_consent_input.setChecked(False)
-    app.processEvents()
-
-    assert dialog.marketing_consent_input.isChecked() is False
-    assert dialog._birth_date_value() == ""
 
 
 def test_birthdays_page_lists_current_month_customers(tmp_path) -> None:

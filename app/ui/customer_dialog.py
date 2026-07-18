@@ -65,11 +65,10 @@ class CustomerDialog(QDialog):
         self.notes_input = QTextEdit()
         self.notes_input.setFixedHeight(90)
         self.marketing_consent_input = QCheckBox("Acepta recibir promociones")
-        self.marketing_consent_input.toggled.connect(self._toggle_marketing_consent)
 
         form.addRow("Nombre *", self.first_name_input)
-        form.addRow("Apellido *", self.last_name_input)
-        form.addRow("Telefono", self.phone_input)
+        form.addRow("Apellido", self.last_name_input)
+        form.addRow("Telefono *", self.phone_input)
         form.addRow("Correo", self.email_input)
         form.addRow("", self.marketing_consent_input)
         form.addRow("Fecha de nacimiento", birth_date_row)
@@ -162,24 +161,6 @@ class CustomerDialog(QDialog):
             return ""
         return self.birth_date_input.date().toString("yyyy-MM-dd")
 
-    def _toggle_marketing_consent(self, checked: bool) -> None:
-        if not checked and not self.birth_date_empty_input.isChecked():
-            answer = QMessageBox.question(
-                self,
-                "Retirar consentimiento",
-                "Al retirar el consentimiento promocional, la fecha de nacimiento dejará de "
-                "utilizarse para campañas. ¿Desea eliminar también la fecha guardada?",
-                QMessageBox.Yes | QMessageBox.No,
-            )
-            if answer != QMessageBox.Yes:
-                self.marketing_consent_input.blockSignals(True)
-                self.marketing_consent_input.setChecked(True)
-                self.marketing_consent_input.blockSignals(False)
-                self._sync_birth_date_controls()
-                return
-            self._clear_birth_date()
-        self._sync_birth_date_controls()
-
     def _toggle_birth_date_empty(self, checked: bool) -> None:
         self._sync_birth_date_controls()
         if not checked and self.birth_date_input.date() == QDate(1900, 1, 1):
@@ -191,6 +172,5 @@ class CustomerDialog(QDialog):
         self._sync_birth_date_controls()
 
     def _sync_birth_date_controls(self) -> None:
-        consent = self.marketing_consent_input.isChecked()
-        self.birth_date_empty_input.setEnabled(consent)
-        self.birth_date_input.setEnabled(consent and not self.birth_date_empty_input.isChecked())
+        self.birth_date_empty_input.setEnabled(True)
+        self.birth_date_input.setEnabled(not self.birth_date_empty_input.isChecked())
